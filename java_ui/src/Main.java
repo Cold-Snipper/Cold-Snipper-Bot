@@ -504,6 +504,14 @@ public class Main {
                 log("FB queue cleared");
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"FB queue cleared\"}");
                 break;
+            case "fb_send_messages":
+                BACKGROUND.submit(() -> runFbMessenger(params));
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"FB send queued\"}");
+                break;
+            case "site_send_messages":
+                BACKGROUND.submit(() -> runSiteForms(params));
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Website send queued\"}");
+                break;
             case "add_client":
                 Client client = Client.fromParams(params);
                 if (client != null) {
@@ -578,6 +586,84 @@ public class Main {
             log("Analyzed listing " + (i + 1));
         }
         log("FB analysis finished (ready to save URLs)");
+    }
+
+    private static void runFbMessenger(Map<String, String> params) {
+        String message = params.getOrDefault("fb_message", "").trim();
+        if (message.isEmpty()) {
+            log("FB send skipped: message is empty");
+            return;
+        }
+        String limit = params.getOrDefault("fb_send_limit", "5");
+        String headless = params.getOrDefault("fb_headless", "false");
+        Path script = Paths.get("..", "cold_bot", "fb_messenger.py").toAbsolutePath().normalize();
+        Path queuePath = dataDir.resolve("fb_queue.csv");
+        List<String> command = new ArrayList<>();
+        command.add("python3");
+        command.add(script.toString());
+        command.add("--queue-path");
+        command.add(queuePath.toString());
+        command.add("--message");
+        command.add(message);
+        command.add("--limit");
+        command.add(limit);
+        if ("true".equalsIgnoreCase(headless)) {
+            command.add("--headless");
+        }
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("FB send: " + line);
+                }
+            }
+            int exitCode = process.waitFor();
+            log("FB send finished (exit=" + exitCode + ")");
+        } catch (Exception e) {
+            log("FB send failed: " + e.getMessage());
+        }
+    }
+
+    private static void runSiteForms(Map<String, String> params) {
+        String message = params.getOrDefault("site_message", "").trim();
+        if (message.isEmpty()) {
+            log("Website send skipped: message is empty");
+            return;
+        }
+        String limit = params.getOrDefault("site_send_limit", "5");
+        String headless = params.getOrDefault("site_headless", "false");
+        Path script = Paths.get("..", "cold_bot", "site_forms.py").toAbsolutePath().normalize();
+        Path leadsPath = dataDir.resolve("leads.csv");
+        List<String> command = new ArrayList<>();
+        command.add("python3");
+        command.add(script.toString());
+        command.add("--leads-path");
+        command.add(leadsPath.toString());
+        command.add("--message");
+        command.add(message);
+        command.add("--limit");
+        command.add(limit);
+        if ("true".equalsIgnoreCase(headless)) {
+            command.add("--headless");
+        }
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("Website send: " + line);
+                }
+            }
+            int exitCode = process.waitFor();
+            log("Website send finished (exit=" + exitCode + ")");
+        } catch (Exception e) {
+            log("Website send failed: " + e.getMessage());
+        }
     }
 
     private static void sleep(long millis) {

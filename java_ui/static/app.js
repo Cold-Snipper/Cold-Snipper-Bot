@@ -244,6 +244,19 @@ function buildPayload(name) {
       return {
         ids: selectedFbIds().join(","),
       };
+    case "fb_send_messages":
+      return compactPayload({
+        fb_search_url: readValue("fb-search-url"),
+        fb_message: readValue("fb-message"),
+        fb_send_limit: readValue("fb-send-limit"),
+        fb_headless: readChecked("fb-headless"),
+      });
+    case "site_send_messages":
+      return compactPayload({
+        site_message: readValue("site-message"),
+        site_send_limit: readValue("site-send-limit"),
+        site_headless: readChecked("site-headless"),
+      });
     case "search_db":
       return {
         search_query: readValue("search-query"),

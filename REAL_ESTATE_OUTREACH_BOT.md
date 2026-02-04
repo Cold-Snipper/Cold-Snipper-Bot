@@ -47,6 +47,13 @@ For safe, local testing against atHome.lu, a simple scanner can pull listing
 URLs and text fields (title, price, location, description, contact info) and
 store them in SQLite. It deliberately does **not** save photos.
 
+### CRM + Browser Outreach (Current Build)
+The current build includes:
+- A CRM-style dashboard for leads/clients (pipeline stages, automation toggles).
+- A browser-driven outreach layer (Playwright):
+  - FB Messenger send for queued URLs.
+  - Website contact form submission for website leads.
+
 ## Operating Principles
 - Low volume, human-like cadence
 - Respect site ToS and public data boundaries

@@ -24,3 +24,12 @@ For a minimal test scan against atHome.lu that stores text-only listings
 in a local SQLite DB (no photos):
 
 `python athome_scan.py --start-url "https://www.athome.lu/en/apartment" --limit 10 --db listings.db`
+
+## Browser Outreach (Playwright)
+Local browser-driven outreach is available for:
+- **FB Messenger**: `cold_bot/fb_messenger.py`
+- **Website Forms**: `cold_bot/site_forms.py`
+
+These are triggered from the localhost UI and operate on:
+- `java_ui/data/fb_queue.csv` (FB URLs)
+- `java_ui/data/leads.csv` (website leads)

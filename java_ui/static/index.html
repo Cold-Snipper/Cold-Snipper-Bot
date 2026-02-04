@@ -140,6 +140,26 @@
                 </label>
               </div>
             </div>
+            <div class="settings-group">
+              <div class="settings-title">Outreach (Websites)</div>
+              <div class="form-grid">
+                <label>
+                  Message Template
+                  <textarea id="site-message" rows="4">Hi! I saw your listing and wondered if you'd consider working with a local agent to get more exposure and qualified buyers. Happy to help with zero upfront costs.</textarea>
+                </label>
+                <label>
+                  Send Limit
+                  <input id="site-send-limit" type="text" placeholder="5" />
+                </label>
+                <label class="checkbox">
+                  <input id="site-headless" type="checkbox" />
+                  Run headless
+                </label>
+              </div>
+              <div class="buttons">
+                <button data-action="site_send_messages">Send via Website Forms</button>
+              </div>
+            </div>
           </div>
           <div class="buttons">
             <button data-action="start_scan">Start Scan</button>
@@ -261,6 +281,26 @@
                 <button data-action="fb_save_urls">Save URLs</button>
                 <button class="secondary" data-action="fb_mark_contacted">Mark Contacted</button>
                 <button class="secondary" data-action="fb_clear_queue">Clear Queue</button>
+              </div>
+            </div>
+            <div class="settings-group">
+              <div class="settings-title">Send via Browser</div>
+              <div class="form-grid">
+                <label>
+                  Message Template
+                  <textarea id="fb-message" rows="4">Hi! I saw your listing and wondered if you'd consider working with a local agent to get more exposure and qualified buyers. Happy to help with zero upfront costs.</textarea>
+                </label>
+                <label>
+                  Send Limit
+                  <input id="fb-send-limit" type="text" placeholder="5" />
+                </label>
+                <label class="checkbox">
+                  <input id="fb-headless" type="checkbox" />
+                  Run headless
+                </label>
+              </div>
+              <div class="buttons">
+                <button data-action="fb_send_messages">Send Messages (Browser)</button>
               </div>
             </div>
           </div>

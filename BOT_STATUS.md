@@ -9,7 +9,8 @@ The system runs a Java-based localhost UI at `http://localhost:8080`.
 It is a **testing console** that lets you:
 - Configure scan parameters for **Website Scrape** or **FB Marketplace**.
 - Run simulated scans and queue URLs.
-- Manage a lightweight CRM: clients, communications, and pipeline stages.
+- Trigger **browser-driven outreach** (forms + Messenger).
+- Manage a CRM-style pipeline: clients, communications, stages, and automation.
 
 ### 2) Website Scrape (Test Mode)
 The Website Scrape mode in the UI is **currently simulated** for testing.  
@@ -24,18 +25,26 @@ The FB flow is a **two-stage mock pipeline**:
 2. **Save URLs**: creates and stores mock Marketplace URLs in:
    - `java_ui/data/fb_queue.csv`
 
-You can then mark items contacted or clear the queue.
+You can then mark items contacted or clear the queue.  
+There is also a **browser-driven send** step (Playwright) that can message
+queued URLs if a logged-in FB storage state exists.
 
-### 4) CRM (Client Communications Tab)
-A full CRM-style workspace exists in the **Client Communciations** tab:
+### 4) Website Form Outreach (Real Browser Automation)
+The UI can trigger browser automation to submit **website contact forms**
+for leads listed in `java_ui/data/leads.csv`.  
+This uses Playwright to detect a message field + submit button and then
+marks leads as `contacted` or `failed`.
+
+### 5) CRM (Client Communications Tab)
+A CRM-style workspace exists in the **Client Communciations** tab:
 - Summary dashboard (total leads, viable leads, conversion, automation)
 - Filters and tabs (All / Website / FB)
-- Clients grid with automation toggle and quick actions
+- CRM grid with automation toggles
 - Client detail panel (unique panel per lead)
 - Communication log tied to the selected client
 
 Client data is stored locally in:
-- `java_ui/data/clients.csv`
+- `java_ui/data/clients.csv`  
 Communications are stored in:
 - `java_ui/data/communications.csv`
 
@@ -59,12 +68,17 @@ Stored in `java_ui/data/communications.csv` with fields:
 Stored in `java_ui/data/fb_queue.csv` with fields:
 - `id`, `url`, `status`, `saved_at`
 
+### Scripts (Browser Automation)
+- `cold_bot/fb_messenger.py` (send FB Messenger messages via Playwright)
+- `cold_bot/site_forms.py` (submit website contact forms via Playwright)
+
 ## What Is Real vs. Mock
 
 **Real today:**
 - Local UI and API routing
 - Local CSV persistence
 - CRM workflow and client panel behaviors
+- Browser-driven outreach (forms + Messenger)
 
 **Mock today:**
 - Website scan (creates mock leads)
@@ -85,4 +99,4 @@ Open `http://localhost:8080`.
 - Wire Website Scrape UI to real Playwright scraping + local SQLite.
 - Wire FB flow to Playwright with logged-in session and URL capture.
 - Add LLM-based qualification & contact extraction.
-- Add real outreach sending per channel with safety controls.
+- Add richer per-site form adapters and safety controls.
