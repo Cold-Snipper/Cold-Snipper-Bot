@@ -1,0 +1,1 @@
+Write short polite email (150-220 words) proposing real estate partnership. From: {from} To: Owner of {summary} Key points: Compliment, offer help, no fees, CTA. Subject first, then body. Output JSON: {{"subject": "...", "body": "..."}}

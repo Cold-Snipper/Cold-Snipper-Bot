@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>COLD BOT Local UI</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>COLD BOT Local UI</h1>
+      <p>
+        Local-first scanning and outreach testing UI. Focused on FSBO discovery,
+        contact extraction, and safe, manual review before outreach.
+      </p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="scanner">Scanner</button>
+      <button class="tab" data-tab="client-communications">Client Communciations</button>
+    </div>
+
+    <div class="tab-content active" id="tab-scanner">
+      <section class="panel">
+        <div class="status">
+          <div>
+            <span class="label">Uptime</span>
+            <span id="uptime">-</span>
+          </div>
+          <div>
+            <span class="label">Last action</span>
+            <span id="last-action">-</span>
+          </div>
+          <div>
+            <span class="label">Actions</span>
+            <span id="action-count">-</span>
+          </div>
+          <div>
+            <span class="label">Logs</span>
+            <span id="log-count">-</span>
+          </div>
+          <div>
+            <span class="label">DB Leads</span>
+            <span id="db-count">-</span>
+          </div>
+          <div>
+            <span class="label">Client Comms</span>
+            <span id="comm-count">-</span>
+          </div>
+          <div>
+            <span class="label">CRM Clients</span>
+            <span id="client-count">-</span>
+          </div>
+          <div>
+            <span class="label">FB Queue</span>
+            <span id="fb-queue-count">-</span>
+          </div>
+          <div>
+            <span class="label">Scan State</span>
+            <span id="scan-state">-</span>
+          </div>
+          <div>
+            <span class="label">Last Scan</span>
+            <span id="last-scan">-</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Scan Mode</h2>
+        <div class="toggle-row">
+          <label class="toggle">
+            <input type="radio" name="scan-mode" value="website" checked />
+            Website Scrape (into database + CRM)
+          </label>
+          <label class="toggle">
+            <input type="radio" name="scan-mode" value="facebook" />
+            FB Marketplace Search (logged-in user)
+          </label>
+        </div>
+      </section>
+
+      <div class="mode-grid">
+        <section class="mode-panel active" id="website-scan-setup">
+          <div class="mode-header">
+            <h2>Website Scrape Setup</h2>
+            <span class="mode-pill">Database + CRM</span>
+          </div>
+          <div class="settings-stack">
+            <div class="settings-group">
+              <div class="settings-title">Targets</div>
+              <div class="form-grid">
+                <label>
+                  Start URLs
+                  <textarea id="start-urls" rows="3">https://www.athome.lu/en/apartment</textarea>
+                </label>
+                <label>
+                  Country (EU)
+                  <select id="country">
+                    <option value="">Loading EU countries...</option>
+                  </select>
+                </label>
+                <label>
+                  Target Site
+                  <select id="target-site">
+                    <option value="">Loading target sites...</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <div class="settings-title">Filters</div>
+              <div class="form-grid">
+                <label>
+                  Criteria (FSBO keywords)
+                  <textarea id="criteria" rows="3">FSBO, for sale by owner, owner selling, motivated seller</textarea>
+                </label>
+                <label>
+                  City
+                  <input id="city" type="text" value="Miami" />
+                </label>
+                <label>
+                  Max Price
+                  <input id="max-price" type="text" value="500000" />
+                </label>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <div class="settings-title">Advanced</div>
+              <div class="form-grid">
+                <label>
+                  Listing Selector
+                  <input id="listing-selector" type="text" value='[data-testid="marketplace_feed_card"]' />
+                </label>
+                <label>
+                  Single Page URL
+                  <input id="single-url" type="text" value="https://www.athome.lu/buy/apartment/luxembourg/id-0000000.html" />
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="buttons">
+            <button data-action="start_scan">Start Scan</button>
+            <button data-action="pause_scan">Pause Scan</button>
+            <button data-action="stop_scan">Stop Scan</button>
+            <button data-action="test_single_page">Test Single Page</button>
+            <button class="secondary" data-action="preview_results">Preview Results</button>
+          </div>
+        </section>
+
+        <section class="mode-panel" id="facebook-scan-setup">
+          <div class="mode-header">
+            <h2>Facebook Marketplace Setup</h2>
+            <span class="mode-pill">Analyze → Save URLs → Contact Later</span>
+          </div>
+          <div class="settings-stack">
+            <div class="settings-group">
+              <div class="settings-title">Targets</div>
+              <div class="form-grid">
+                <label>
+                  Main Category
+                  <select id="fb-category">
+                    <option value="">Select category</option>
+                    <option value="property">Property for Sale</option>
+                    <option value="rentals">Property for Rent</option>
+                    <option value="rooms">Rooms for Rent</option>
+                    <option value="commercial">Commercial</option>
+                    <option value="land">Land</option>
+                  </select>
+                </label>
+                <label>
+                  FB Search URL
+                  <input id="fb-search-url" type="text" value="https://www.facebook.com/marketplace/miami/propertyforsale" />
+                </label>
+                <label>
+                  Logged-in User
+                  <select id="fb-logged-in">
+                    <option value="true">Yes (use logged-in session)</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="settings-group">
+              <div class="settings-title">Preferences</div>
+              <div class="form-grid">
+                <label>
+                  Property Type
+                  <select id="fb-property-type">
+                    <option value="">Any</option>
+                    <option value="house">House</option>
+                    <option value="apartment">Apartment</option>
+                    <option value="condo">Condo</option>
+                    <option value="townhouse">Townhouse</option>
+                    <option value="studio">Studio</option>
+                    <option value="duplex">Duplex</option>
+                    <option value="land">Land</option>
+                  </select>
+                </label>
+                <label>
+                  Min Price
+                  <input id="fb-min-price" type="text" placeholder="100000" />
+                </label>
+                <label>
+                  Max Price
+                  <input id="fb-max-price" type="text" placeholder="500000" />
+                </label>
+                <label>
+                  Bedrooms (min)
+                  <input id="fb-bedrooms" type="text" placeholder="2" />
+                </label>
+                <label>
+                  Bathrooms (min)
+                  <input id="fb-bathrooms" type="text" placeholder="1" />
+                </label>
+                <label>
+                  Size Min (m²)
+                  <input id="fb-size-min" type="text" placeholder="60" />
+                </label>
+                <label>
+                  Size Max (m²)
+                  <input id="fb-size-max" type="text" placeholder="200" />
+                </label>
+                <label>
+                  Posted within (days)
+                  <input id="fb-posted-within" type="text" placeholder="7" />
+                </label>
+                <label>
+                  Location Radius (km)
+                  <input id="fb-radius" type="text" placeholder="25" />
+                </label>
+                <label>
+                  Language
+                  <select id="fb-language">
+                    <option value="">Any</option>
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="es">Spanish</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="it">Italian</option>
+                    <option value="nl">Dutch</option>
+                  </select>
+                </label>
+                <label>
+                  Keywords
+                  <input id="fb-keywords" type="text" placeholder="FSBO, owner, no agent" />
+                </label>
+                <label class="checkbox">
+                  <input id="fb-fsbo-only" type="checkbox" />
+                  FSBO Only
+                </label>
+              </div>
+            </div>
+            <div class="settings-group">
+              <div class="settings-title">Actions</div>
+              <div class="buttons">
+                <button data-action="fb_analyze">Analyze Feed</button>
+                <button data-action="fb_save_urls">Save URLs</button>
+                <button class="secondary" data-action="fb_mark_contacted">Mark Contacted</button>
+                <button class="secondary" data-action="fb_clear_queue">Clear Queue</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="table-wrap compact">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>ID</th>
+                  <th>URL</th>
+                  <th>Status</th>
+                  <th>Saved At</th>
+                </tr>
+              </thead>
+              <tbody id="fb-queue-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+
+      <section class="panel">
+        <h2>Database</h2>
+        <div class="form-row">
+          <input id="search-query" type="text" placeholder="Search DB (e.g., Miami, $500k, FSBO)" />
+          <button data-action="search_db" class="secondary">Search DB</button>
+          <button data-action="view_all_leads" class="secondary">View All Leads</button>
+          <button data-action="refresh_leads" class="secondary">Refresh Leads</button>
+        </div>
+        <div class="buttons">
+          <button data-action="mark_contacted">Mark as Contacted</button>
+          <button data-action="delete_selected">Delete Selected</button>
+          <button class="secondary" data-action="export_csv">Export to CSV</button>
+          <button class="secondary" data-action="backup_db">Backup DB</button>
+          <button class="danger" data-action="clear_database">Clear Database</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Config / LLM Testing</h2>
+        <div class="form-grid">
+          <label>
+            Config Path
+            <input id="config-path" type="text" value="config.yaml" />
+          </label>
+          <label>
+            Sample Listing Text (LLM Test)
+            <textarea id="prompt-text" rows="4">House for sale by owner, 3 bed, 2 bath in Miami. Text me at 305-555-1212.</textarea>
+          </label>
+        </div>
+        <div class="buttons">
+          <button data-action="load_config">Load Config</button>
+          <button data-action="save_config">Save Config</button>
+          <button class="secondary" data-action="test_llm_prompt">Test LLM Prompt</button>
+          <button class="secondary" data-action="clear_logs">Clear Logs</button>
+        </div>
+        <div id="action-response" class="response"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Leads Preview</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Price</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Scan Time</th>
+              </tr>
+            </thead>
+            <tbody id="leads-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Output Monitor</h2>
+        <div id="log-list" class="logs"></div>
+      </section>
+    </div>
+
+    <div class="tab-content" id="tab-client-communications">
+      <section class="panel">
+        <h2>CRM Dashboard</h2>
+        <div class="summary-grid">
+          <div class="card">
+            <div class="card-label">Total Leads</div>
+            <div class="card-value" id="crm-total">0</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Viable Leads (Score ≥ 7)</div>
+            <div class="card-value" id="crm-viable">0</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Contacted</div>
+            <div class="card-value" id="crm-contacted">0</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Converted</div>
+            <div class="card-value" id="crm-converted">0%</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Automation Enabled</div>
+            <div class="card-value" id="crm-auto">0</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <button class="secondary" data-action="refresh_clients">Refresh Data</button>
+          <button class="secondary" data-action="export_clients">Export Summary</button>
+          <label class="toggle">
+            <input id="crm-global-auto" type="checkbox" />
+            Global Auto-Outreach
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="crm-tabs">
+          <button class="tab-btn active" data-crm-tab="all">All Leads</button>
+          <button class="tab-btn" data-crm-tab="website">Website Outreach</button>
+          <button class="tab-btn" data-crm-tab="facebook">FB Outreach</button>
+        </div>
+        <div class="crm-filters">
+          <label>
+            Progress Stage
+            <select id="crm-stage-filter">
+              <option value="">All</option>
+              <option value="new">New</option>
+              <option value="qualified">Qualified</option>
+              <option value="contacted">Contacted</option>
+              <option value="proposal_sent">Proposal Sent</option>
+              <option value="negotiation">Negotiation</option>
+              <option value="won">Won</option>
+              <option value="lost">Lost</option>
+            </select>
+          </label>
+          <label>
+            Source Type
+            <select id="crm-source-filter">
+              <option value="">All</option>
+              <option value="website">Website</option>
+              <option value="facebook">Facebook</option>
+            </select>
+          </label>
+          <label>
+            Outreach Channel
+            <select id="crm-channel-filter">
+              <option value="">All</option>
+              <option value="email">Email</option>
+              <option value="forms">Website Forms</option>
+              <option value="messenger">Messenger</option>
+            </select>
+          </label>
+          <label>
+            Min Viability Score
+            <input id="crm-score-filter" type="text" placeholder="7" />
+          </label>
+          <label>
+            Automation
+            <select id="crm-auto-filter">
+              <option value="">All</option>
+              <option value="true">Enabled</option>
+              <option value="false">Manual</option>
+            </select>
+          </label>
+          <label>
+            Search
+            <input id="client-search" type="text" placeholder="Name, email, notes..." />
+          </label>
+          <button class="secondary" data-action="search_clients">Apply Filters</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>ID/Name</th>
+                <th>Source</th>
+                <th>Details</th>
+                <th>Viability</th>
+                <th>Contact</th>
+                <th>Progress</th>
+                <th>Automation</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="clients-body"></tbody>
+          </table>
+        </div>
+        <div class="buttons">
+          <button data-action="update_client">Update Selected</button>
+          <button class="secondary" data-action="delete_client">Delete Selected</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="crm-grid">
+          <div class="crm-panel">
+            <div class="crm-header">
+              <h3>Client Panel</h3>
+              <span id="client-panel-title" class="mode-pill">Select a client</span>
+            </div>
+            <div class="client-card" id="client-detail">
+              <div class="client-row"><span>Name</span><strong id="detail-name">-</strong></div>
+              <div class="client-row"><span>Email</span><strong id="detail-email">-</strong></div>
+              <div class="client-row"><span>Phone</span><strong id="detail-phone">-</strong></div>
+              <div class="client-row"><span>Status</span><strong id="detail-status">-</strong></div>
+              <div class="client-row"><span>Stage</span><strong id="detail-stage">-</strong></div>
+              <div class="client-row"><span>Viability</span><strong id="detail-viability">-</strong></div>
+              <div class="client-row"><span>Source</span><strong id="detail-source">-</strong></div>
+              <div class="client-row"><span>Channel</span><strong id="detail-channel">-</strong></div>
+              <div class="client-row"><span>Last Interaction</span><strong id="detail-last-contacted">-</strong></div>
+              <div class="client-row"><span>Notes</span><strong id="detail-notes">-</strong></div>
+            </div>
+            <div class="settings-group">
+              <div class="settings-title">Log Communication</div>
+              <div class="form-grid">
+                <label>
+                  Contact Name
+                  <input id="comm-name" type="text" placeholder="Owner name" />
+                </label>
+                <label>
+                  Contact Email
+                  <input id="comm-email" type="email" placeholder="owner@email.com" />
+                </label>
+                <label>
+                  Contact Phone
+                  <input id="comm-phone" type="text" placeholder="+352 000 000" />
+                </label>
+                <label>
+                  Channel
+                  <select id="comm-channel">
+                    <option value="email">Email</option>
+                    <option value="phone">Phone</option>
+                    <option value="sms">SMS</option>
+                    <option value="whatsapp">WhatsApp</option>
+                  </select>
+                </label>
+                <label>
+                  Status
+                  <select id="comm-status">
+                    <option value="pending">Pending</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="responded">Responded</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+                <label>
+                  Notes
+                  <textarea id="comm-notes" rows="3" placeholder="Short notes..."></textarea>
+                </label>
+                <label>
+                  Last Message
+                  <textarea id="comm-message" rows="3" placeholder="Last message sent or received..."></textarea>
+                </label>
+              </div>
+              <div class="buttons">
+                <button data-action="add_comm">Log Communication</button>
+                <button class="secondary" data-action="update_comm_status">Update Comm Status</button>
+                <button class="secondary" data-action="refresh_comms">Refresh Comms</button>
+                <button class="secondary" data-action="export_comms">Export Comms</button>
+              </div>
+              <div class="form-row">
+                <input id="comm-search" type="text" placeholder="Search communications..." />
+                <button class="secondary" data-action="search_comms">Search</button>
+                <button class="secondary" data-action="delete_comm">Delete Selected</button>
+                <button class="danger" data-action="clear_comms">Clear Comms</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="crm-panel">
+            <div class="crm-header">
+              <h3>Add / Update Lead</h3>
+              <span class="mode-pill">Core Data</span>
+            </div>
+            <div class="settings-group">
+              <div class="settings-title">Lead Info</div>
+              <div class="form-grid">
+                <label>
+                  Name
+                  <input id="client-name" type="text" placeholder="Client name" />
+                </label>
+                <label>
+                  Email
+                  <input id="client-email" type="email" placeholder="client@email.com" />
+                </label>
+                <label>
+                  Phone
+                  <input id="client-phone" type="text" placeholder="+352 000 000" />
+                </label>
+                <label>
+                  Status
+                  <select id="client-status">
+                    <option value="active">Active</option>
+                    <option value="paused">Paused</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                </label>
+                <label>
+                  Stage
+                  <select id="client-stage">
+                    <option value="new">New</option>
+                    <option value="qualified">Qualified</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="proposal_sent">Proposal Sent</option>
+                    <option value="negotiation">Negotiation</option>
+                    <option value="won">Won</option>
+                    <option value="lost">Lost</option>
+                  </select>
+                </label>
+                <label>
+                  Source
+                  <input id="client-source" type="text" placeholder="website / facebook / referral" />
+                </label>
+                <label>
+                  Source Type
+                  <select id="client-source-type">
+                    <option value="">Select</option>
+                    <option value="website">Website</option>
+                    <option value="facebook">Facebook</option>
+                  </select>
+                </label>
+                <label>
+                  Outreach Channel
+                  <select id="client-outreach-channel">
+                    <option value="">Select</option>
+                    <option value="email">Email</option>
+                    <option value="forms">Website Forms</option>
+                    <option value="messenger">Messenger</option>
+                  </select>
+                </label>
+                <label>
+                  Viability Score (1-10)
+                  <input id="client-viability-score" type="text" placeholder="8" />
+                </label>
+                <label class="checkbox">
+                  <input id="client-automation-enabled" type="checkbox" />
+                  Automation Enabled
+                </label>
+                <label>
+                  Notes
+                  <textarea id="client-notes" rows="3" placeholder="Client notes..."></textarea>
+                </label>
+              </div>
+              <div class="buttons">
+                <button data-action="add_client">Add Lead</button>
+                <button class="secondary" data-action="update_client">Update Selected</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

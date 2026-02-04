@@ -1,0 +1,10 @@
+Analyze this real estate listing: {text}
+Criteria for Airbnb viability (config): {criteria}
+Criteria for Airbnb viability (reference):
+- Location: high tourist/business demand, proximity to attractions, low seasonality, growing tourism, safe neighborhoods, not oversaturated.
+- Property Type/Features: single-family homes/apartments (2-4 bedrooms preferred), unique amenities (pool, view, kitchen), suitable for families/groups/digital nomads.
+- Financial Potential: price under threshold, ADR > 150, occupancy > 50%, good RevPAR/cap rate.
+- Regulations: STR-legal area, no bans, easy zoning/licensing.
+- Other: low competition, positive indicators like "near tourist spots", "furnished", "investment opportunity".
+Output JSON only:
+{{"viable": true/false, "reason": "detailed explanation", "rating": 1-10, "qualification_factors": ["..."]}}

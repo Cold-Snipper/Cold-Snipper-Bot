@@ -1,0 +1,51 @@
+start_urls:
+  - "https://www.facebook.com/marketplace/[city]/propertyforsale?query=owner"
+
+countries:
+  - "US"
+
+target_sites_by_country:
+  US:
+    - "https://example.com/us-listings"
+
+criteria: "FSBO, owner selling, no agent, home for sale"
+airbnb_criteria: "Tourist demand, attractions, STR-legal, ADR>150, occupancy>50%, unique amenities"
+
+ollama_model: "llama3.2"
+llm_provider: "ollama"
+
+headless: true
+manual_approve: false
+
+email:
+  from: "youragency@gmail.com"
+  app_password: "your_app_pw"
+  smtp_host: "smtp.gmail.com"
+message_templates:
+  email:
+    subject: "Proposal to Airbnb Your Property"
+    body: "Hi [Owner], Your [property desc] looks perfect for short-term rentals. As an investor, I'd like to discuss partnering to turn it into an Airbnb gem – higher returns, no hassle. Let's chat? [Your Name]"
+  whatsapp:
+    body: "Hey [Owner]! Saw your [property] listing – it's Airbnb gold! Proximity to [attraction] and features like [amenity] make it ideal. Interested in a quick call to discuss investment? [Your Name]"
+
+limits:
+  max_contacts_per_hour: 5
+  scroll_depth: 30
+  delay_min: 3
+  delay_max: 12
+  cooldown_min: 1800
+  cooldown_max: 3600
+
+selectors:
+  listing: '[data-testid="marketplace_feed_card"]'
+
+database: "leads.db"
+
+facebook:
+  marketplace_enabled: true
+  marketplace_url_template: "https://www.facebook.com/marketplace/{country}/propertyforsale?query=owner"
+  messaging_enabled: false
+  groups_database: "data/facebook_groups.json"
+  groups_by_country:
+    US:
+      - "https://www.facebook.com/groups/example-rentals"

@@ -1,0 +1,757 @@
+const logList = document.getElementById("log-list");
+const uptimeEl = document.getElementById("uptime");
+const lastActionEl = document.getElementById("last-action");
+const actionCountEl = document.getElementById("action-count");
+const logCountEl = document.getElementById("log-count");
+const dbCountEl = document.getElementById("db-count");
+const commCountEl = document.getElementById("comm-count");
+const clientCountEl = document.getElementById("client-count");
+const scanStateEl = document.getElementById("scan-state");
+const lastScanEl = document.getElementById("last-scan");
+const leadsBody = document.getElementById("leads-body");
+const commsBody = document.getElementById("comms-body");
+const fbQueueBody = document.getElementById("fb-queue-body");
+const actionResponse = document.getElementById("action-response");
+const countrySelect = document.getElementById("country");
+const targetSiteSelect = document.getElementById("target-site");
+const fbQueueCountEl = document.getElementById("fb-queue-count");
+const scanModeInputs = document.querySelectorAll("input[name='scan-mode']");
+const websiteScanSetup = document.getElementById("website-scan-setup");
+const facebookScanSetup = document.getElementById("facebook-scan-setup");
+const clientsBody = document.getElementById("clients-body");
+const clientPanelTitle = document.getElementById("client-panel-title");
+const detailName = document.getElementById("detail-name");
+const detailEmail = document.getElementById("detail-email");
+const detailPhone = document.getElementById("detail-phone");
+const detailStatus = document.getElementById("detail-status");
+const detailStage = document.getElementById("detail-stage");
+const detailLastContacted = document.getElementById("detail-last-contacted");
+const detailSource = document.getElementById("detail-source");
+const detailChannel = document.getElementById("detail-channel");
+const detailViability = document.getElementById("detail-viability");
+const detailNotes = document.getElementById("detail-notes");
+const crmTotalEl = document.getElementById("crm-total");
+const crmViableEl = document.getElementById("crm-viable");
+const crmContactedEl = document.getElementById("crm-contacted");
+const crmConvertedEl = document.getElementById("crm-converted");
+const crmAutoEl = document.getElementById("crm-auto");
+const crmGlobalAuto = document.getElementById("crm-global-auto");
+const crmStageFilter = document.getElementById("crm-stage-filter");
+const crmSourceFilter = document.getElementById("crm-source-filter");
+const crmChannelFilter = document.getElementById("crm-channel-filter");
+const crmScoreFilter = document.getElementById("crm-score-filter");
+const crmAutoFilter = document.getElementById("crm-auto-filter");
+const crmTabButtons = document.querySelectorAll(".tab-btn[data-crm-tab]");
+
+let lastIndex = 0;
+let polling = true;
+let lastQuery = "";
+let lastCommQuery = "";
+let lastClientQuery = "";
+let selectedClientId = "";
+let selectedClientEmail = "";
+let targetsData = null;
+let allClients = [];
+let activeCrmTab = "all";
+
+function formatUptime(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const hrs = Math.floor(mins / 60);
+  const remMins = mins % 60;
+  const remSecs = seconds % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${remMins}m ${remSecs}s`;
+  }
+  if (mins > 0) {
+    return `${mins}m ${remSecs}s`;
+  }
+  return `${seconds}s`;
+}
+
+async function fetchStatus() {
+  try {
+    const res = await fetch("/api/status");
+    const data = await res.json();
+    uptimeEl.textContent = formatUptime(data.uptimeSeconds);
+    lastActionEl.textContent = data.lastAction || "-";
+    actionCountEl.textContent = data.actionCount ?? "-";
+    logCountEl.textContent = data.logCount ?? "-";
+    dbCountEl.textContent = data.dbCount ?? "-";
+    commCountEl.textContent = data.commCount ?? "-";
+    if (clientCountEl) {
+      clientCountEl.textContent = data.clientCount ?? "-";
+    }
+    if (clientCountEl) {
+      clientCountEl.textContent = data.clientCount ?? "-";
+    }
+    scanStateEl.textContent = data.scanState ?? "-";
+    lastScanEl.textContent = data.lastScanAt ?? "-";
+    fbQueueCountEl.textContent = data.fbQueueCount ?? "-";
+  } catch (err) {
+    console.warn("Status fetch failed", err);
+  }
+}
+
+async function fetchLogs() {
+  if (!polling) return;
+  try {
+    const res = await fetch(`/api/logs?since=${lastIndex}`);
+    const data = await res.json();
+    if (Array.isArray(data.logs) && data.logs.length > 0) {
+      appendLogs(data.logs);
+      lastIndex = data.to ?? lastIndex;
+    }
+  } catch (err) {
+    console.warn("Log fetch failed", err);
+  }
+}
+
+function appendLogs(logs) {
+  for (const line of logs) {
+    const div = document.createElement("div");
+    div.className = "log-line";
+    div.textContent = line;
+    logList.appendChild(div);
+  }
+  logList.scrollTop = logList.scrollHeight;
+}
+
+function readValue(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+
+function readChecked(id) {
+  const el = document.getElementById(id);
+  return el ? el.checked : false;
+}
+
+function compactPayload(payload) {
+  const output = {};
+  for (const [key, value] of Object.entries(payload)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "string" && value.trim() === "") continue;
+    if (typeof value === "boolean" && value === false) continue;
+    output[key] = value;
+  }
+  return output;
+}
+
+function truncate(value, maxLength = 60) {
+  if (!value) return "";
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength)}...`;
+}
+
+function populateSelect(selectId, options, placeholder) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = "";
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = placeholder;
+  select.appendChild(empty);
+  for (const option of options) {
+    const opt = document.createElement("option");
+    opt.value = option.value;
+    opt.textContent = option.label;
+    select.appendChild(opt);
+  }
+}
+
+function updateSitesForCountry(countryName) {
+  if (!targetsData) return;
+  const sites = targetsData.sitesByCountry?.[countryName] || [];
+  const siteOptions = sites.map((site) => ({
+    value: site.id,
+    label: site.label,
+  }));
+  populateSelect("target-site", siteOptions, "Select target site");
+}
+
+async function loadTargets() {
+  try {
+    const res = await fetch("/targets_eu.json");
+    targetsData = await res.json();
+    const countries = (targetsData.countries || []).map((name) => ({
+      value: name,
+      label: name,
+    }));
+    populateSelect("country", countries, "Select EU country");
+    updateSitesForCountry("");
+  } catch (err) {
+    console.warn("Failed to load targets list", err);
+    populateSelect("country", [], "Select EU country");
+    populateSelect("target-site", [], "Select target site");
+  }
+}
+
+function selectedLeadIds() {
+  return Array.from(document.querySelectorAll("input.lead-select:checked")).map(
+    (input) => input.value
+  );
+}
+
+function selectedClientIds() {
+  return Array.from(document.querySelectorAll("input.client-select:checked")).map(
+    (input) => input.value
+  );
+}
+
+function buildPayload(name) {
+  switch (name) {
+    case "start_scan":
+      return {
+        scan_mode: currentScanMode(),
+        start_urls: readValue("start-urls"),
+        criteria: readValue("criteria"),
+        city: readValue("city"),
+        country: readValue("country"),
+        target_site: readValue("target-site"),
+        max_price: readValue("max-price"),
+        listing_selector: readValue("listing-selector"),
+      };
+    case "test_single_page":
+      return {
+        scan_mode: currentScanMode(),
+        single_url: readValue("single-url"),
+        criteria: readValue("criteria"),
+        city: readValue("city"),
+        country: readValue("country"),
+        target_site: readValue("target-site"),
+        max_price: readValue("max-price"),
+      };
+    case "fb_analyze":
+    case "fb_save_urls":
+      return compactPayload({
+        fb_search_url: readValue("fb-search-url"),
+        fb_logged_in: readValue("fb-logged-in"),
+        fb_category: readValue("fb-category"),
+        fb_property_type: readValue("fb-property-type"),
+        fb_min_price: readValue("fb-min-price"),
+        fb_max_price: readValue("fb-max-price"),
+        fb_bedrooms: readValue("fb-bedrooms"),
+        fb_bathrooms: readValue("fb-bathrooms"),
+        fb_size_min: readValue("fb-size-min"),
+        fb_size_max: readValue("fb-size-max"),
+        fb_posted_within: readValue("fb-posted-within"),
+        fb_radius: readValue("fb-radius"),
+        fb_language: readValue("fb-language"),
+        fb_keywords: readValue("fb-keywords"),
+        fb_fsbo_only: readChecked("fb-fsbo-only"),
+      });
+    case "fb_mark_contacted":
+      return {
+        ids: selectedFbIds().join(","),
+      };
+    case "search_db":
+      return {
+        search_query: readValue("search-query"),
+      };
+    case "mark_contacted":
+    case "delete_selected":
+      return {
+        ids: selectedLeadIds().join(","),
+      };
+    case "load_config":
+    case "save_config":
+      return { config_path: readValue("config-path") };
+    case "test_llm_prompt":
+      return { prompt_text: readValue("prompt-text") };
+    case "add_comm":
+      return {
+        contact_name: readValue("comm-name"),
+        contact_email: readValue("comm-email"),
+        contact_phone: readValue("comm-phone"),
+        channel: readValue("comm-channel"),
+        status: readValue("comm-status"),
+        notes: readValue("comm-notes"),
+        last_message: readValue("comm-message"),
+        client_id: selectedClientId,
+      };
+    case "update_comm_status":
+      return {
+        ids: selectedCommIds().join(","),
+        status: readValue("comm-status"),
+      };
+    case "delete_comm":
+      return {
+        ids: selectedCommIds().join(","),
+      };
+    case "search_comms":
+      return {
+        comm_query: readValue("comm-search"),
+      };
+    case "add_client":
+      return compactPayload({
+        client_name: readValue("client-name"),
+        client_email: readValue("client-email"),
+        client_phone: readValue("client-phone"),
+        client_status: readValue("client-status"),
+        client_stage: readValue("client-stage"),
+        client_source: readValue("client-source"),
+        client_source_type: readValue("client-source-type"),
+        client_outreach_channel: readValue("client-outreach-channel"),
+        client_automation_enabled: readChecked("client-automation-enabled"),
+        client_viability_score: readValue("client-viability-score"),
+        client_notes: readValue("client-notes"),
+      });
+    case "update_client":
+      return compactPayload({
+        client_id: selectedClientId,
+        status: readValue("client-status"),
+        stage: readValue("client-stage"),
+        notes: readValue("client-notes"),
+        source_type: readValue("client-source-type"),
+        outreach_channel: readValue("client-outreach-channel"),
+        automation_enabled: readChecked("client-automation-enabled"),
+        viability_score: readValue("client-viability-score"),
+      });
+    case "delete_client":
+      return {
+        ids: selectedClientIds().join(","),
+      };
+    case "search_clients":
+      return {
+        client_query: readValue("client-search"),
+      };
+    default:
+      return {};
+  }
+}
+
+function currentScanMode() {
+  for (const input of scanModeInputs) {
+    if (input.checked) {
+      return input.value;
+    }
+  }
+  return "website";
+}
+
+function updateScanModeUI() {
+  const mode = currentScanMode();
+  if (websiteScanSetup) {
+    websiteScanSetup.classList.toggle("active", mode === "website");
+    websiteScanSetup.classList.toggle("inactive", mode !== "website");
+  }
+  if (facebookScanSetup) {
+    facebookScanSetup.classList.toggle("active", mode === "facebook");
+    facebookScanSetup.classList.toggle("inactive", mode !== "facebook");
+  }
+}
+
+async function sendAction(name) {
+  const payload = buildPayload(name);
+  const params = new URLSearchParams(payload);
+  try {
+    const res = await fetch(`/api/action?name=${encodeURIComponent(name)}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    const data = await res.json();
+    showResponse(data.message || "Action sent");
+    if (name === "clear_logs") {
+      logList.innerHTML = "";
+      lastIndex = 0;
+    }
+    if (name === "refresh_leads" || name === "preview_results" || name === "view_all_leads") {
+      refreshLeads(lastQuery);
+    }
+    if (name === "search_db") {
+      const q = readValue("search-query");
+      lastQuery = q;
+      refreshLeads(q);
+    }
+    if (name === "mark_contacted" || name === "delete_selected") {
+      refreshLeads(lastQuery);
+    }
+    if (name === "fb_save_urls" || name === "fb_analyze") {
+      refreshFbQueue();
+    }
+    if (name === "fb_mark_contacted" || name === "fb_clear_queue") {
+      refreshFbQueue();
+    }
+    if (name === "add_comm") {
+      refreshComms(lastCommQuery);
+    }
+    if (name === "search_comms") {
+      const q = readValue("comm-search");
+      lastCommQuery = q;
+      refreshComms(q);
+    }
+    if (name === "update_comm_status" || name === "delete_comm" || name === "refresh_comms") {
+      refreshComms(lastCommQuery);
+    }
+    if (name === "add_client" || name === "update_client" || name === "delete_client" || name === "refresh_clients") {
+      refreshClients(lastClientQuery);
+    }
+    if (name === "search_clients") {
+      const q = readValue("client-search");
+      lastClientQuery = q;
+      renderCrm();
+    }
+  } catch (err) {
+    console.warn("Action failed", err);
+  }
+}
+
+function showResponse(message) {
+  if (!actionResponse) return;
+  actionResponse.textContent = message;
+  actionResponse.classList.add("visible");
+  setTimeout(() => actionResponse.classList.remove("visible"), 2500);
+}
+
+async function refreshLeads(query) {
+  const url = new URL("/api/leads", window.location.origin);
+  url.searchParams.set("limit", "200");
+  if (query) {
+    url.searchParams.set("q", query);
+  }
+  try {
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    renderLeads(data.leads || []);
+  } catch (err) {
+    console.warn("Leads fetch failed", err);
+  }
+}
+
+function renderLeads(leads) {
+  leadsBody.innerHTML = "";
+  for (const lead of leads) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><input class="lead-select" type="checkbox" value="${lead.id}" /></td>
+      <td>${lead.id}</td>
+      <td><a href="${lead.url}" target="_blank" rel="noopener">${lead.title}</a></td>
+      <td>${lead.price}</td>
+      <td>${lead.location}</td>
+      <td>${lead.status}</td>
+      <td>${lead.contactEmail}</td>
+      <td>${lead.contactPhone}</td>
+      <td>${lead.scanTime}</td>
+    `;
+    leadsBody.appendChild(row);
+  }
+}
+
+function selectedCommIds() {
+  return Array.from(document.querySelectorAll("input.comm-select:checked")).map(
+    (input) => input.value
+  );
+}
+
+function selectedFbIds() {
+  return Array.from(document.querySelectorAll("input.fb-select:checked")).map(
+    (input) => input.value
+  );
+}
+
+async function refreshFbQueue() {
+  const url = new URL("/api/fbqueue", window.location.origin);
+  url.searchParams.set("limit", "200");
+  try {
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    renderFbQueue(data.items || []);
+  } catch (err) {
+    console.warn("FB queue fetch failed", err);
+  }
+}
+
+function renderFbQueue(items) {
+  fbQueueBody.innerHTML = "";
+  for (const item of items) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><input class="fb-select" type="checkbox" value="${item.id}" /></td>
+      <td>${item.id}</td>
+      <td><a href="${item.url}" target="_blank" rel="noopener">${item.url}</a></td>
+      <td>${item.status}</td>
+      <td>${item.savedAt}</td>
+    `;
+    fbQueueBody.appendChild(row);
+  }
+}
+
+async function refreshComms(query) {
+  const url = new URL("/api/comms", window.location.origin);
+  url.searchParams.set("limit", "200");
+  if (query) {
+    url.searchParams.set("q", query);
+  }
+  if (selectedClientId) {
+    url.searchParams.set("client_id", selectedClientId);
+  }
+  try {
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    renderComms(data.communications || []);
+  } catch (err) {
+    console.warn("Comms fetch failed", err);
+  }
+}
+
+function renderComms(comms) {
+  if (!commsBody) return;
+  commsBody.innerHTML = "";
+  for (const comm of comms) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><input class="comm-select" type="checkbox" value="${comm.id}" /></td>
+      <td>${comm.id}</td>
+      <td>${comm.channel || ""}</td>
+      <td>${comm.status || ""}</td>
+      <td>${comm.lastContactedAt || ""}</td>
+      <td>${comm.lastMessage || ""}</td>
+      <td>${comm.notes || ""}</td>
+    `;
+    commsBody.appendChild(row);
+  }
+}
+
+async function refreshClients(query) {
+  const url = new URL("/api/clients", window.location.origin);
+  url.searchParams.set("limit", "200");
+  try {
+    const res = await fetch(url.toString());
+    const data = await res.json();
+    allClients = data.clients || [];
+    renderCrm();
+  } catch (err) {
+    console.warn("Clients fetch failed", err);
+  }
+}
+
+function renderCrm() {
+  const filtered = applyCrmFilters(allClients);
+  renderClients(filtered);
+  renderSummary(allClients);
+}
+
+function applyCrmFilters(clients) {
+  const stage = crmStageFilter ? crmStageFilter.value : "";
+  const source = crmSourceFilter ? crmSourceFilter.value : "";
+  const channel = crmChannelFilter ? crmChannelFilter.value : "";
+  const minScore = crmScoreFilter ? parseFloat(crmScoreFilter.value || "0") : 0;
+  const autoFilter = crmAutoFilter ? crmAutoFilter.value : "";
+  const query = readValue("client-search").toLowerCase();
+
+  return clients.filter((client) => {
+    if (activeCrmTab !== "all") {
+      if ((client.sourceType || "").toLowerCase() !== activeCrmTab) return false;
+    }
+    if (stage && (client.stage || "").toLowerCase() !== stage) return false;
+    if (source && (client.sourceType || "").toLowerCase() !== source) return false;
+    if (channel && (client.outreachChannel || "").toLowerCase() !== channel) return false;
+    if (autoFilter !== "") {
+      const auto = Boolean(client.automationEnabled);
+      if ((autoFilter === "true") !== auto) return false;
+    }
+    if (minScore > 0) {
+      const score = parseFloat(client.viabilityScore || "0");
+      if (score < minScore) return false;
+    }
+    if (query) {
+      const haystack = `${client.name} ${client.email} ${client.phone} ${client.notes}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+}
+
+function renderSummary(clients) {
+  const total = clients.length;
+  const viable = clients.filter((c) => parseFloat(c.viabilityScore || "0") >= 7).length;
+  const contacted = clients.filter((c) => ["contacted", "proposal_sent", "negotiation", "won"].includes((c.stage || "").toLowerCase())).length;
+  const converted = clients.filter((c) => (c.stage || "").toLowerCase() === "won").length;
+  const autoEnabled = clients.filter((c) => c.automationEnabled).length;
+  if (crmTotalEl) crmTotalEl.textContent = total;
+  if (crmViableEl) crmViableEl.textContent = viable;
+  if (crmContactedEl) crmContactedEl.textContent = contacted;
+  if (crmConvertedEl) crmConvertedEl.textContent = total ? `${Math.round((converted / total) * 100)}%` : "0%";
+  if (crmAutoEl) crmAutoEl.textContent = autoEnabled;
+}
+
+function renderClients(clients) {
+  clientsBody.innerHTML = "";
+  for (const client of clients) {
+    const row = document.createElement("tr");
+    const details = truncate(client.notes || client.source || "", 50);
+    const viability = client.viabilityScore ? `${client.viabilityScore}/10` : "-";
+    const contact = client.email || client.phone || "-";
+    const sourceLabel = client.sourceType || client.source || "-";
+    const automationChecked = client.automationEnabled ? "checked" : "";
+    row.innerHTML = `
+      <td><input class="client-select" type="checkbox" value="${client.id}" /></td>
+      <td>${client.id} - ${client.name || "Unnamed"}</td>
+      <td>${sourceLabel}</td>
+      <td>${details}</td>
+      <td>${viability}</td>
+      <td>${contact}</td>
+      <td>${client.stage || "-"}</td>
+      <td><input class="automation-toggle" type="checkbox" data-client-id="${client.id}" ${automationChecked} /></td>
+      <td><button class="link-button" data-client-id="${client.id}">View</button></td>
+    `;
+    clientsBody.appendChild(row);
+  }
+  clientsBody.querySelectorAll("button[data-client-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.clientId;
+      const client = clients.find((c) => String(c.id) === String(id));
+      if (client) {
+        selectClient(client);
+      }
+    });
+  });
+  clientsBody.querySelectorAll("input.automation-toggle").forEach((toggle) => {
+    toggle.addEventListener("change", () => {
+      const id = toggle.dataset.clientId;
+      const payload = new URLSearchParams({
+        client_id: id,
+        automation_enabled: toggle.checked ? "true" : "false",
+      });
+      fetch(`/api/action?name=update_client`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: payload.toString(),
+      }).then(() => refreshClients(lastClientQuery));
+    });
+  });
+}
+
+function selectClient(client) {
+  selectedClientId = String(client.id);
+  selectedClientEmail = client.email || "";
+  if (clientPanelTitle) {
+    clientPanelTitle.textContent = `Client #${client.id}`;
+  }
+  if (detailName) detailName.textContent = client.name || "-";
+  if (detailEmail) detailEmail.textContent = client.email || "-";
+  if (detailPhone) detailPhone.textContent = client.phone || "-";
+  if (detailStatus) detailStatus.textContent = client.status || "-";
+  if (detailStage) detailStage.textContent = client.stage || "-";
+  if (detailLastContacted) detailLastContacted.textContent = client.lastInteraction || client.lastContactedAt || "-";
+  if (detailSource) detailSource.textContent = client.sourceType || client.source || "-";
+  if (detailChannel) detailChannel.textContent = client.outreachChannel || "-";
+  if (detailViability) detailViability.textContent = client.viabilityScore ? `${client.viabilityScore}/10` : "-";
+  if (detailNotes) detailNotes.textContent = client.notes || "-";
+  const commName = document.getElementById("comm-name");
+  const commEmail = document.getElementById("comm-email");
+  const commPhone = document.getElementById("comm-phone");
+  if (commName) commName.value = client.name || "";
+  if (commEmail) commEmail.value = client.email || "";
+  if (commPhone) commPhone.value = client.phone || "";
+  const clientName = document.getElementById("client-name");
+  const clientEmail = document.getElementById("client-email");
+  const clientPhone = document.getElementById("client-phone");
+  const clientStatus = document.getElementById("client-status");
+  const clientStage = document.getElementById("client-stage");
+  const clientSource = document.getElementById("client-source");
+  const clientSourceType = document.getElementById("client-source-type");
+  const clientOutreach = document.getElementById("client-outreach-channel");
+  const clientViability = document.getElementById("client-viability-score");
+  const clientAutomation = document.getElementById("client-automation-enabled");
+  const clientNotes = document.getElementById("client-notes");
+  if (clientName) clientName.value = client.name || "";
+  if (clientEmail) clientEmail.value = client.email || "";
+  if (clientPhone) clientPhone.value = client.phone || "";
+  if (clientStatus) clientStatus.value = client.status || "active";
+  if (clientStage) clientStage.value = client.stage || "new";
+  if (clientSource) clientSource.value = client.source || "";
+  if (clientSourceType) clientSourceType.value = client.sourceType || "";
+  if (clientOutreach) clientOutreach.value = client.outreachChannel || "";
+  if (clientViability) clientViability.value = client.viabilityScore || "";
+  if (clientAutomation) clientAutomation.checked = Boolean(client.automationEnabled);
+  if (clientNotes) clientNotes.value = client.notes || "";
+  refreshComms(lastCommQuery);
+}
+
+document.querySelectorAll("button[data-action]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const action = button.dataset.action;
+    if (action === "refresh_leads") {
+      refreshLeads(lastQuery);
+      return;
+    }
+    if (action === "refresh_comms") {
+      refreshComms(lastCommQuery);
+      return;
+    }
+    if (action === "search_comms") {
+      const q = readValue("comm-search");
+      lastCommQuery = q;
+      refreshComms(q);
+      return;
+    }
+    if (action === "search_clients") {
+      const q = readValue("client-search");
+      lastClientQuery = q;
+      renderCrm();
+      return;
+    }
+    if (action === "refresh_clients") {
+      refreshClients(lastClientQuery);
+      return;
+    }
+    sendAction(action);
+  });
+});
+
+document.querySelectorAll(".tab").forEach((tab) => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((btn) => btn.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach((panel) => panel.classList.remove("active"));
+    tab.classList.add("active");
+    const target = document.getElementById(`tab-${tab.dataset.tab}`);
+    if (target) {
+      target.classList.add("active");
+    }
+  });
+});
+
+if (countrySelect) {
+  countrySelect.addEventListener("change", () => {
+    updateSitesForCountry(countrySelect.value);
+  });
+}
+
+crmTabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    crmTabButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeCrmTab = btn.dataset.crmTab || "all";
+    renderCrm();
+  });
+});
+
+const filterElements = [crmStageFilter, crmSourceFilter, crmChannelFilter, crmScoreFilter, crmAutoFilter];
+filterElements.forEach((el) => {
+  if (el) {
+    el.addEventListener("change", renderCrm);
+  }
+});
+
+scanModeInputs.forEach((input) => {
+  input.addEventListener("change", updateScanModeUI);
+});
+
+fetchStatus();
+fetchLogs();
+refreshLeads("");
+refreshComms("");
+refreshFbQueue();
+refreshClients("");
+loadTargets();
+updateScanModeUI();
+setInterval(fetchStatus, 2000);
+setInterval(fetchLogs, 1000);
+setInterval(() => refreshLeads(lastQuery), 5000);
+setInterval(() => refreshComms(lastCommQuery), 7000);
+setInterval(() => refreshFbQueue(), 6000);
+setInterval(() => refreshClients(lastClientQuery), 8000);

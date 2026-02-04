@@ -1,0 +1,249 @@
+{
+  "countries": [
+    "Austria",
+    "Belgium",
+    "Bulgaria",
+    "Croatia",
+    "Cyprus",
+    "Czechia",
+    "Denmark",
+    "Estonia",
+    "Finland",
+    "France",
+    "Germany",
+    "Greece",
+    "Hungary",
+    "Ireland",
+    "Italy",
+    "Latvia",
+    "Lithuania",
+    "Luxembourg",
+    "Malta",
+    "Netherlands",
+    "Poland",
+    "Portugal",
+    "Romania",
+    "Slovakia",
+    "Slovenia",
+    "Spain",
+    "Sweden"
+  ],
+  "sitesByCountry": {
+    "Austria": [
+      { "id": "willhaben", "label": "Willhaben", "baseUrl": "https://www.willhaben.at/" },
+      { "id": "immoscout24_at", "label": "ImmobilienScout24 AT", "baseUrl": "https://www.immobilienscout24.at/" },
+      { "id": "immowelt_at", "label": "Immowelt AT", "baseUrl": "https://www.immowelt.at/" },
+      { "id": "immo_at", "label": "immo.at", "baseUrl": "https://www.immo.at/" },
+      { "id": "wohnnet_at", "label": "wohnnet.at", "baseUrl": "https://www.wohnnet.at/" },
+      { "id": "remax_at", "label": "RE/MAX Austria", "baseUrl": "https://www.remax.at/" }
+    ],
+    "Belgium": [
+      { "id": "immoweb", "label": "Immoweb", "baseUrl": "https://www.immoweb.be/" },
+      { "id": "zimmo", "label": "Zimmo", "baseUrl": "https://www.zimmo.be/" },
+      { "id": "logicimmo_be", "label": "Logic-Immo", "baseUrl": "https://www.logic-immo.be/" },
+      { "id": "realo", "label": "Realo", "baseUrl": "https://www.realo.be/" },
+      { "id": "vlan", "label": "Vlan", "baseUrl": "https://www.vlan.be/" },
+      { "id": "century21_be", "label": "Century 21 Belgium", "baseUrl": "https://www.century21.be/" }
+    ],
+    "Bulgaria": [
+      { "id": "imot_bg", "label": "imot.bg", "baseUrl": "https://www.imot.bg/" },
+      { "id": "imoti_net", "label": "imoti.net", "baseUrl": "https://www.imoti.net/" },
+      { "id": "olx_bg", "label": "OLX Bulgaria", "baseUrl": "https://www.olx.bg/" },
+      { "id": "bazar_bg", "label": "bazar.bg", "baseUrl": "https://www.bazar.bg/" },
+      { "id": "address_bg", "label": "Address.bg", "baseUrl": "https://www.address.bg/" },
+      { "id": "homes_bg", "label": "homes.bg", "baseUrl": "https://www.homes.bg/" }
+    ],
+    "Croatia": [
+      { "id": "njuskalo", "label": "Njuškalo", "baseUrl": "https://www.njuskalo.hr/" },
+      { "id": "crozilla", "label": "Crozilla", "baseUrl": "https://www.crozilla.com/" },
+      { "id": "realestate_hr", "label": "realestate.com.hr", "baseUrl": "https://www.realestate.com.hr/" },
+      { "id": "oglasnik", "label": "Oglasnik", "baseUrl": "https://www.oglasnik.hr/" },
+      { "id": "nekretnine_hr", "label": "Nekretnine.hr", "baseUrl": "https://www.nekretnine.hr/" },
+      { "id": "remax_hr", "label": "RE/MAX Croatia", "baseUrl": "https://www.remax-croatia.com/" }
+    ],
+    "Cyprus": [
+      { "id": "bazaraki", "label": "Bazaraki", "baseUrl": "https://www.bazaraki.com/" },
+      { "id": "cyprusproperty", "label": "Cyprus Property", "baseUrl": "https://www.cyprusproperty.com/" },
+      { "id": "cypruspropertynews", "label": "Cyprus Property News", "baseUrl": "https://www.cypruspropertynews.com/" },
+      { "id": "rentbuydirect", "label": "Rent Buy Direct", "baseUrl": "https://www.rentbuydirect.com.cy/" },
+      { "id": "homehunter", "label": "Home Hunter Cyprus", "baseUrl": "https://www.homehuntercyprus.com/" },
+      { "id": "remax_cy", "label": "RE/MAX Cyprus", "baseUrl": "https://www.remax.com.cy/" }
+    ],
+    "Czechia": [
+      { "id": "sreality", "label": "Sreality", "baseUrl": "https://www.sreality.cz/" },
+      { "id": "bezrealitky", "label": "Bezrealitky", "baseUrl": "https://www.bezrealitky.cz/" },
+      { "id": "reality_idnes", "label": "Reality iDNES", "baseUrl": "https://reality.idnes.cz/" },
+      { "id": "hyperreality", "label": "HyperReality", "baseUrl": "https://www.hyperreality.cz/" },
+      { "id": "ulovdomov", "label": "UlovDomov", "baseUrl": "https://www.ulovdomov.cz/" },
+      { "id": "ceskereality", "label": "CeskeReality", "baseUrl": "https://www.ceskereality.cz/" }
+    ],
+    "Denmark": [
+      { "id": "boligportal", "label": "BoligPortal", "baseUrl": "https://www.boligportal.dk/" },
+      { "id": "boligsiden", "label": "Boligsiden", "baseUrl": "https://www.boligsiden.dk/" },
+      { "id": "boliga", "label": "Boliga", "baseUrl": "https://www.boliga.dk/" },
+      { "id": "danbolig", "label": "Danbolig", "baseUrl": "https://www.danbolig.dk/" },
+      { "id": "edc", "label": "EDC", "baseUrl": "https://www.edc.dk/" },
+      { "id": "home_dk", "label": "home.dk", "baseUrl": "https://www.home.dk/" }
+    ],
+    "Estonia": [
+      { "id": "kv", "label": "KV.ee", "baseUrl": "https://www.kv.ee/" },
+      { "id": "city24_ee", "label": "City24", "baseUrl": "https://www.city24.ee/" },
+      { "id": "kv24", "label": "KV24", "baseUrl": "https://www.kv24.ee/" },
+      { "id": "kinnisvara24", "label": "Kinnisvara24", "baseUrl": "https://www.kinnisvara24.ee/" },
+      { "id": "ober_haus_ee", "label": "Ober-Haus", "baseUrl": "https://www.ober-haus.ee/" },
+      { "id": "partner_ee", "label": "1Partner", "baseUrl": "https://www.1partner.ee/" }
+    ],
+    "Finland": [
+      { "id": "oikotie", "label": "Oikotie", "baseUrl": "https://www.oikotie.fi/" },
+      { "id": "etuovi", "label": "Etuovi", "baseUrl": "https://www.etuovi.com/" },
+      { "id": "tori_fi", "label": "Tori.fi", "baseUrl": "https://www.tori.fi/" },
+      { "id": "vuokraovi", "label": "Vuokraovi", "baseUrl": "https://www.vuokraovi.com/" },
+      { "id": "kiinteistomaailma", "label": "Kiinteistömaailma", "baseUrl": "https://www.kiinteistomaailma.fi/" },
+      { "id": "habita_fi", "label": "Habita", "baseUrl": "https://www.habita.com/fi" }
+    ],
+    "France": [
+      { "id": "seloger", "label": "SeLoger", "baseUrl": "https://www.seloger.com/" },
+      { "id": "leboncoin", "label": "LeBonCoin", "baseUrl": "https://www.leboncoin.fr/" },
+      { "id": "logicimmo", "label": "Logic-Immo", "baseUrl": "https://www.logic-immo.com/" },
+      { "id": "bienici", "label": "Bien'ici", "baseUrl": "https://www.bienici.com/" },
+      { "id": "pap", "label": "PAP", "baseUrl": "https://www.pap.fr/" },
+      { "id": "avendrealouer", "label": "A Vendre A Louer", "baseUrl": "https://www.avendrealouer.fr/" }
+    ],
+    "Germany": [
+      { "id": "immoscout24_de", "label": "ImmoScout24", "baseUrl": "https://www.immobilienscout24.de/" },
+      { "id": "immowelt_de", "label": "Immowelt", "baseUrl": "https://www.immowelt.de/" },
+      { "id": "immonet_de", "label": "Immonet", "baseUrl": "https://www.immonet.de/" },
+      { "id": "kleinanzeigen", "label": "Kleinanzeigen", "baseUrl": "https://www.kleinanzeigen.de/" },
+      { "id": "wg_gesucht", "label": "WG-Gesucht", "baseUrl": "https://www.wg-gesucht.de/" },
+      { "id": "immowelt", "label": "Immowelt (Alt)", "baseUrl": "https://www.immowelt.de/" }
+    ],
+    "Greece": [
+      { "id": "spitogatos", "label": "Spitogatos", "baseUrl": "https://www.spitogatos.gr/" },
+      { "id": "spiti24", "label": "Spiti24", "baseUrl": "https://www.spiti24.gr/" },
+      { "id": "xe_gr", "label": "XE.gr", "baseUrl": "https://www.xe.gr/" },
+      { "id": "tospitimou", "label": "ToSpitiMou", "baseUrl": "https://www.tospitimou.gr/" },
+      { "id": "plot_gr", "label": "Plot.gr", "baseUrl": "https://www.plot.gr/" },
+      { "id": "remax_gr", "label": "RE/MAX Greece", "baseUrl": "https://www.remax.gr/" }
+    ],
+    "Hungary": [
+      { "id": "ingatlan", "label": "Ingatlan.com", "baseUrl": "https://ingatlan.com/" },
+      { "id": "jofogas", "label": "Jófogás", "baseUrl": "https://www.jofogas.hu/" },
+      { "id": "otthonterkep", "label": "OtthonTérkép", "baseUrl": "https://otthonterkep.hu/" },
+      { "id": "zenga", "label": "Zenga", "baseUrl": "https://www.zenga.hu/" },
+      { "id": "ingatlanbazar", "label": "Ingatlanbazar", "baseUrl": "https://ingatlanbazar.hu/" },
+      { "id": "ingatlanok", "label": "Ingatlanok.hu", "baseUrl": "https://ingatlanok.hu/" }
+    ],
+    "Ireland": [
+      { "id": "daft", "label": "Daft.ie", "baseUrl": "https://www.daft.ie/" },
+      { "id": "myhome", "label": "MyHome", "baseUrl": "https://www.myhome.ie/" },
+      { "id": "property_ie", "label": "Property.ie", "baseUrl": "https://www.property.ie/" },
+      { "id": "rent_ie", "label": "Rent.ie", "baseUrl": "https://www.rent.ie/" },
+      { "id": "dng", "label": "DNG", "baseUrl": "https://www.dng.ie/" },
+      { "id": "lisney", "label": "Lisney", "baseUrl": "https://www.lisney.com/" }
+    ],
+    "Italy": [
+      { "id": "immobiliare_it", "label": "Immobiliare.it", "baseUrl": "https://www.immobiliare.it/" },
+      { "id": "idealista_it", "label": "Idealista Italy", "baseUrl": "https://www.idealista.it/" },
+      { "id": "casa_it", "label": "Casa.it", "baseUrl": "https://www.casa.it/" },
+      { "id": "subito", "label": "Subito", "baseUrl": "https://www.subito.it/" },
+      { "id": "tecnocasa", "label": "Tecnocasa", "baseUrl": "https://www.tecnocasa.it/" },
+      { "id": "wikicasa", "label": "Wikicasa", "baseUrl": "https://www.wikicasa.it/" }
+    ],
+    "Latvia": [
+      { "id": "ss_lv", "label": "SS.com", "baseUrl": "https://www.ss.com/" },
+      { "id": "city24_lv", "label": "City24", "baseUrl": "https://www.city24.lv/" },
+      { "id": "zip_lv", "label": "Zip.lv", "baseUrl": "https://www.zip.lv/" },
+      { "id": "nekustamie", "label": "Nekustamie Ipasumi", "baseUrl": "https://www.nekustamieipasumi.lv/" },
+      { "id": "latio", "label": "Latio", "baseUrl": "https://www.latio.lv/" },
+      { "id": "vestabalt", "label": "VestaBalt", "baseUrl": "https://www.vestabalt.lv/" }
+    ],
+    "Lithuania": [
+      { "id": "aruodas", "label": "Aruodas", "baseUrl": "https://www.aruodas.lt/" },
+      { "id": "domoplius", "label": "Domoplius", "baseUrl": "https://www.domoplius.lt/" },
+      { "id": "skelbiu", "label": "Skelbiu", "baseUrl": "https://www.skelbiu.lt/" },
+      { "id": "realu", "label": "Realu", "baseUrl": "https://www.realu.lt/" },
+      { "id": "kampas", "label": "Kampas", "baseUrl": "https://www.kampas.lt/" },
+      { "id": "oberhaus_lt", "label": "Ober-Haus", "baseUrl": "https://www.ober-haus.lt/" }
+    ],
+    "Luxembourg": [
+      { "id": "athome", "label": "atHome.lu", "baseUrl": "https://www.athome.lu/" },
+      { "id": "immotop", "label": "Immotop", "baseUrl": "https://www.immotop.lu/" },
+      { "id": "wortimmo", "label": "Wortimmo", "baseUrl": "https://www.wortimmo.lu/" },
+      { "id": "luximmo", "label": "Luximmo", "baseUrl": "https://www.luximmo.lu/" },
+      { "id": "immoticket24", "label": "Immoticket24", "baseUrl": "https://www.immoticket24.lu/" },
+      { "id": "remax_lu", "label": "RE/MAX Luxembourg", "baseUrl": "https://www.remax.lu/" }
+    ],
+    "Malta": [
+      { "id": "maltapark", "label": "MaltaPark", "baseUrl": "https://www.maltapark.com/" },
+      { "id": "propertymarket", "label": "PropertyMarket", "baseUrl": "https://www.propertymarket.com.mt/" },
+      { "id": "franksalt", "label": "Frank Salt", "baseUrl": "https://www.franksalt.com.mt/" },
+      { "id": "quicklets", "label": "QuickLets", "baseUrl": "https://www.quicklets.com.mt/" },
+      { "id": "remax_malta", "label": "RE/MAX Malta", "baseUrl": "https://www.remax-malta.com/" },
+      { "id": "sensaramalta", "label": "Sensara Malta", "baseUrl": "https://www.sensaramalta.com/" }
+    ],
+    "Netherlands": [
+      { "id": "funda", "label": "Funda", "baseUrl": "https://www.funda.nl/" },
+      { "id": "pararius", "label": "Pararius", "baseUrl": "https://www.pararius.com/" },
+      { "id": "jaap", "label": "Jaap", "baseUrl": "https://www.jaap.nl/" },
+      { "id": "huislijn", "label": "Huislijn", "baseUrl": "https://www.huislijn.nl/" },
+      { "id": "huispedia", "label": "Huispedia", "baseUrl": "https://www.huispedia.nl/" },
+      { "id": "makelaarsland", "label": "Makelaarsland", "baseUrl": "https://www.makelaarsland.nl/" }
+    ],
+    "Poland": [
+      { "id": "otodom", "label": "Otodom", "baseUrl": "https://www.otodom.pl/" },
+      { "id": "olx_pl", "label": "OLX Poland", "baseUrl": "https://www.olx.pl/" },
+      { "id": "gratka", "label": "Gratka", "baseUrl": "https://gratka.pl/" },
+      { "id": "domiporta", "label": "Domiporta", "baseUrl": "https://www.domiporta.pl/" },
+      { "id": "morizon", "label": "Morizon", "baseUrl": "https://www.morizon.pl/" },
+      { "id": "nieruchomosci_online", "label": "Nieruchomosci Online", "baseUrl": "https://www.nieruchomosci-online.pl/" }
+    ],
+    "Portugal": [
+      { "id": "idealista_pt", "label": "Idealista Portugal", "baseUrl": "https://www.idealista.pt/" },
+      { "id": "imovirtual", "label": "Imovirtual", "baseUrl": "https://www.imovirtual.com/" },
+      { "id": "olx_pt", "label": "OLX Portugal", "baseUrl": "https://www.olx.pt/" },
+      { "id": "casa_sapo", "label": "Casa SAPO", "baseUrl": "https://casa.sapo.pt/" },
+      { "id": "remax_pt", "label": "RE/MAX Portugal", "baseUrl": "https://www.remax.pt/" },
+      { "id": "century21_pt", "label": "Century 21 Portugal", "baseUrl": "https://www.century21.pt/" }
+    ],
+    "Romania": [
+      { "id": "imobiliare_ro", "label": "Imobiliare.ro", "baseUrl": "https://www.imobiliare.ro/" },
+      { "id": "olx_ro", "label": "OLX Romania", "baseUrl": "https://www.olx.ro/" },
+      { "id": "storia", "label": "Storia", "baseUrl": "https://www.storia.ro/" },
+      { "id": "anuntul", "label": "Anuntul", "baseUrl": "https://www.anuntul.ro/" },
+      { "id": "lajumate", "label": "LaJumate", "baseUrl": "https://lajumate.ro/" },
+      { "id": "imobiliare_net", "label": "Imobiliare.net", "baseUrl": "https://www.imobiliare.net/" }
+    ],
+    "Slovakia": [
+      { "id": "nehnutelnosti", "label": "Nehnutelnosti.sk", "baseUrl": "https://www.nehnutelnosti.sk/" },
+      { "id": "topreality", "label": "TopReality", "baseUrl": "https://www.topreality.sk/" },
+      { "id": "reality_sk", "label": "Reality.sk", "baseUrl": "https://www.reality.sk/" },
+      { "id": "bazos_sk", "label": "Bazos", "baseUrl": "https://reality.bazos.sk/" },
+      { "id": "zoznamrealit", "label": "ZoznamRealit", "baseUrl": "https://www.zoznamrealit.sk/" },
+      { "id": "nehnutelnosti_pravda", "label": "Nehnutelnosti Pravda", "baseUrl": "https://nehnutelnosti.pravda.sk/" }
+    ],
+    "Slovenia": [
+      { "id": "nepremicnine", "label": "Nepremicnine.net", "baseUrl": "https://www.nepremicnine.net/" },
+      { "id": "bolha", "label": "Bolha", "baseUrl": "https://www.bolha.com/" },
+      { "id": "nepremicnine_si", "label": "Nepremicnine.si", "baseUrl": "https://www.nepremicnine.si/" },
+      { "id": "realestate_si", "label": "RealEstate Slovenia", "baseUrl": "https://www.realestate-slovenia.info/" },
+      { "id": "remax_si", "label": "RE/MAX Slovenia", "baseUrl": "https://www.remax.si/" },
+      { "id": "go_home", "label": "Go Home", "baseUrl": "https://www.gohome.si/" }
+    ],
+    "Spain": [
+      { "id": "idealista_es", "label": "Idealista Spain", "baseUrl": "https://www.idealista.com/" },
+      { "id": "fotocasa", "label": "Fotocasa", "baseUrl": "https://www.fotocasa.es/" },
+      { "id": "pisos", "label": "Pisos.com", "baseUrl": "https://www.pisos.com/" },
+      { "id": "habitaclia", "label": "Habitaclia", "baseUrl": "https://www.habitaclia.com/" },
+      { "id": "yaencontre", "label": "Yaencontre", "baseUrl": "https://www.yaencontre.com/" },
+      { "id": "thinkspain", "label": "ThinkSpain", "baseUrl": "https://www.thinkspain.com/" }
+    ],
+    "Sweden": [
+      { "id": "hemnet", "label": "Hemnet", "baseUrl": "https://www.hemnet.se/" },
+      { "id": "booli", "label": "Booli", "baseUrl": "https://www.booli.se/" },
+      { "id": "blocket", "label": "Blocket", "baseUrl": "https://www.blocket.se/" },
+      { "id": "bostadsportal", "label": "Bostadsportal", "baseUrl": "https://bostadsportal.se/" },
+      { "id": "svenskfast", "label": "Svensk Fastighetsförmedling", "baseUrl": "https://www.svenskfast.se/" },
+      { "id": "maklarhuset", "label": "Mäklarhuset", "baseUrl": "https://www.maklarhuset.se/" }
+    ]
+  }
+}

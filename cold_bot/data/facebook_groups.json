@@ -1,0 +1,46 @@
+{
+  "US": [
+    {
+      "name": "Apartments & Rentals - New York",
+      "url": "https://www.facebook.com/groups/nyc.apartments.rentals"
+    },
+    {
+      "name": "Los Angeles Rentals & Rooms",
+      "url": "https://www.facebook.com/groups/la.rentals.rooms"
+    },
+    {
+      "name": "Miami Rentals & Sublets",
+      "url": "https://www.facebook.com/groups/miami.rentals.sublets"
+    }
+  ],
+  "UK": [
+    {
+      "name": "London Rentals & Flats",
+      "url": "https://www.facebook.com/groups/london.rentals.flats"
+    },
+    {
+      "name": "Manchester Rooms & Rentals",
+      "url": "https://www.facebook.com/groups/manchester.rooms.rentals"
+    }
+  ],
+  "CA": [
+    {
+      "name": "Toronto Rentals & Rooms",
+      "url": "https://www.facebook.com/groups/toronto.rentals.rooms"
+    },
+    {
+      "name": "Vancouver Rentals & Apartments",
+      "url": "https://www.facebook.com/groups/vancouver.rentals.apartments"
+    }
+  ],
+  "AU": [
+    {
+      "name": "Sydney Rentals & Apartments",
+      "url": "https://www.facebook.com/groups/sydney.rentals.apartments"
+    },
+    {
+      "name": "Melbourne Rentals & Rooms",
+      "url": "https://www.facebook.com/groups/melbourne.rentals.rooms"
+    }
+  ]
+}

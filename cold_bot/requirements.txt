@@ -1,0 +1,12 @@
+playwright
+playwright-stealth
+ollama
+pyyaml
+yagmail
+pytest
+beautifulsoup4
+lxml
+black
+flake8
+httpx
+requests

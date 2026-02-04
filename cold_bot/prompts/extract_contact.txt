@@ -1,0 +1,1 @@
+Extract email/phone from: """{text}""" JSON: {{"email": "str or null", "phone": "str or null"}}

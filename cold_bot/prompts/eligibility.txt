@@ -1,0 +1,1 @@
+You are a real estate qualifier. Text: """{text}""" Criteria: {criteria} Output JSON: {{"eligible": true/false, "reason": "brief", "summary": "desc"}}
