@@ -18,6 +18,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="scanner">Scanner</button>
       <button class="tab" data-tab="client-communications">Client Communciations</button>
+      <button class="tab" data-tab="stages">Stages</button>
     </div>
 
     <div class="tab-content active" id="tab-scanner">
@@ -658,6 +659,219 @@
                 <button class="secondary" data-action="update_client">Update Selected</button>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="tab-content" id="tab-stages">
+      <section class="panel">
+        <h2>Workflow Stages Overview</h2>
+        <p>
+          This page shows the full Cold Bot pipeline from configuration to outreach and CRM,
+          with each stage's purpose, inputs, outputs, and a live operational status.
+        </p>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 1 – Setup & Source Selection</h2>
+          <span class="mode-pill" id="stage-config-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">How it works (flow)</div>
+            <div class="stage1-flow">
+              <div class="flow-node">Start</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-node">Prompt: 1=Websites, 2=Facebook, 3=Both</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-node">Validate choice (reprompt up to 3× if invalid)</div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-node">Merge into config → <code>source_type</code> + <code>agents_handling</code></div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-node">Write <code>config.yaml</code></div>
+              <div class="flow-arrow">↓</div>
+              <div class="flow-node">Proceed to Phase 2 (parameters)</div>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>User choice: websites / facebook / both</li>
+              <li>Existing <code>config.yaml</code> (optional)</li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li><code>config.source_type</code> and basic filters/URLs</li>
+              <li><code>agents_handling = "log_and_export"</code> (default)</li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Test Stage 1</div>
+            <p>Select a source type and apply. This writes to <code>config.yaml</code> in the UI working directory (same as running Phase 1).</p>
+            <div class="stage1-test-row">
+              <button type="button" class="stage1-btn" data-stage1="websites">Websites</button>
+              <button type="button" class="stage1-btn" data-stage1="facebook">Facebook</button>
+              <button type="button" class="stage1-btn" data-stage1="both">Both</button>
+            </div>
+            <div class="stage1-result">
+              <span class="label">Current config: </span>
+              <strong id="stage1-current">—</strong>
+              <span id="stage1-result-msg" class="stage1-msg"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 2 – Scanning Engine</h2>
+          <span class="mode-pill" id="stage-scanning-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">Purpose</div>
+            <p>
+              Use Playwright to visit target URLs, scroll, and extract raw listing
+              text into the Python runtime and leads database.
+            </p>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>Targets from <code>config.yaml</code> (start_urls, selectors, limits)</li>
+              <li>Browser session (headless/headful)</li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li>Raw listings fed into the LLM analysis stage</li>
+              <li>Scan status and logs visible in this UI</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 3 – Analysis & Classification</h2>
+          <span class="mode-pill" id="stage-analysis-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">Purpose</div>
+            <p>
+              Run local LLM checks to decide if a listing is eligible, whether it is
+              a private seller or an agent, and how strong the Airbnb potential is.
+            </p>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>Listing text from the scanner</li>
+              <li>Criteria and Airbnb rules from <code>config.yaml</code></li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li>Decision: private vs agent with confidence + reason</li>
+              <li>Viability score and qualification factors</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 4 – Contact Extraction & Outreach</h2>
+          <span class="mode-pill" id="stage-contacting-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">Purpose</div>
+            <p>
+              Extract emails/phones/forms from listings, generate messages, and optionally
+              send via email, website forms, or Facebook (dry-run or live).
+            </p>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>Classified private listings with viability scores</li>
+              <li>Message templates and limits from <code>config.yaml</code></li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li>Queued or sent outreach attempts (email, forms, messenger)</li>
+              <li>Rate-limited actions to avoid spam/bans</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 5 – Logging & Agents List</h2>
+          <span class="mode-pill" id="stage-logging-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">Purpose</div>
+            <p>
+              Persist every decision and outreach event to SQLite and text/Excel logs,
+              and keep a separate agents list for future partnerships.
+            </p>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>Lead decisions and outreach attempts from Python runtime</li>
+              <li>Agent detections (non-private sellers)</li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li><code>leads.db</code> tables for leads and events</li>
+              <li><code>data/agents.txt</code> and <code>data/agents.xlsx</code> exports</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="mode-header">
+          <h2>Stage 6 – CRM & Client Communications</h2>
+          <span class="mode-pill" id="stage-crm-status">Unknown</span>
+        </div>
+        <div class="settings-stack">
+          <div class="settings-group">
+            <div class="settings-title">Purpose</div>
+            <p>
+              Track leads after first contact: progress stage, viability, follow-ups,
+              and logged communications, all visible on the Client Communications tab.
+            </p>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Inputs</div>
+            <ul>
+              <li>Imported or synced leads from the core bot</li>
+              <li>Manual updates and logged communications from this UI</li>
+            </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Outputs</div>
+            <ul>
+              <li>Client records with stages, notes, and automation flags</li>
+              <li>Communication history and exportable summaries</li>
+            </ul>
           </div>
         </div>
       </section>

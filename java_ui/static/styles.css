@@ -436,3 +436,58 @@ td a {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 6px;
 }
+
+/* Stage 1 flow and test */
+.stage1-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0;
+}
+.flow-node {
+  background: #1c2030;
+  border: 1px solid #2b2f3a;
+  border-radius: 8px;
+  padding: 10px 16px;
+  text-align: center;
+  max-width: 360px;
+  font-size: 14px;
+}
+.flow-node code {
+  background: #0f141f;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.flow-arrow {
+  color: #5a6478;
+  font-size: 14px;
+}
+.stage1-test-row {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0;
+}
+.stage1-btn {
+  background: #2a67ff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.stage1-btn:hover {
+  background: #1a57ef;
+}
+.stage1-result {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.stage1-result .label {
+  color: #98a1b3;
+}
+.stage1-msg {
+  margin-left: 8px;
+  color: #6ee7b7;
+}

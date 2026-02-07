@@ -54,7 +54,41 @@ def _call_ollama(prompt: str, model: str, json_format: bool = True) -> str:
     return response["message"]["content"]
 
 
+def _call_llama_cpp(prompt: str, model: str, json_format: bool = True) -> str:
+    base_url = os.getenv("LLAMA_CPP_BASE_URL", "http://127.0.0.1:8080")
+    full_prompt = prompt
+    if json_format:
+        full_prompt = "Return JSON only.\n" + prompt
+    response = httpx.post(
+        f"{base_url}/v1/completions",
+        headers={"Content-Type": "application/json"},
+        json={
+            "model": model,
+            "prompt": full_prompt,
+            "temperature": 0,
+            "stream": False,
+            "max_tokens": 256,
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data["choices"][0]["text"]
+
+
 def _call_json_with_retry(prompt: str, model: str, provider: str) -> Dict:
+    if provider == "auto":
+        last_exc: Optional[Exception] = None
+        for candidate in ("llama_cpp", "xai", "ollama"):
+            if candidate == "xai" and not os.getenv("XAI_API_KEY"):
+                continue
+            try:
+                return _call_json_with_retry(prompt, model, candidate)
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if last_exc:
+            raise last_exc
     if provider == "xai":
         raw = _call_xai(prompt, model)
         try:
@@ -62,6 +96,14 @@ def _call_json_with_retry(prompt: str, model: str, provider: str) -> Dict:
         except Exception:
             retry_prompt = prompt + "\nStrict JSON only."
             retry_raw = _call_xai(retry_prompt, model)
+            return parse_json_with_retry(retry_raw, retry_raw)
+    if provider == "llama_cpp":
+        raw = _call_llama_cpp(prompt, model, json_format=True)
+        try:
+            return parse_json_with_retry(raw, raw)
+        except Exception:
+            retry_prompt = prompt + "\nStrict JSON only."
+            retry_raw = _call_llama_cpp(retry_prompt, model, json_format=True)
             return parse_json_with_retry(retry_raw, retry_raw)
     raw = _call_ollama(prompt, model, json_format=True)
     try:

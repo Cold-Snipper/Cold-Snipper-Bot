@@ -57,7 +57,7 @@ public class Main {
     private static Path clientsFile;
 
     public static void main(String[] args) throws Exception {
-        int port = 8080;
+        int port = 1111;
         String envPort = System.getenv("PORT");
         if (envPort != null && !envPort.isEmpty()) {
             try {
@@ -124,6 +124,10 @@ public class Main {
             }
             if ("/api/clients".equals(path)) {
                 handleClients(exchange);
+                return;
+            }
+            if ("/api/stage1_config".equals(path)) {
+                handleStage1Config(exchange);
                 return;
             }
             if ("/api/action".equals(path)) {
@@ -371,6 +375,45 @@ public class Main {
         sendJson(exchange, 200, body.toString());
     }
 
+    private static final Path STAGE1_CONFIG_PATH = Paths.get("config.yaml");
+
+    private static void handleStage1Config(HttpExchange exchange) throws IOException {
+        if ("GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+            Map<String, String> cfg = readStage1Config();
+            String body = "{\"source_type\":" + (cfg.get("source_type") == null ? "null" : "\"" + jsonEscape(cfg.get("source_type")) + "\"")
+                    + ",\"agents_handling\":" + (cfg.get("agents_handling") == null ? "null" : "\"" + jsonEscape(cfg.get("agents_handling")) + "\"") + "}";
+            sendJson(exchange, 200, body);
+        } else {
+            sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}");
+        }
+    }
+
+    private static Map<String, String> readStage1Config() {
+        Map<String, String> out = new HashMap<>();
+        out.put("source_type", null);
+        out.put("agents_handling", null);
+        if (!Files.exists(STAGE1_CONFIG_PATH)) {
+            return out;
+        }
+        try {
+            for (String line : Files.readAllLines(STAGE1_CONFIG_PATH, StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("source_type:")) {
+                    out.put("source_type", trimmed.substring("source_type:".length()).trim().replaceAll("^[\"\']|[\"\']$", ""));
+                } else if (trimmed.startsWith("agents_handling:")) {
+                    out.put("agents_handling", trimmed.substring("agents_handling:".length()).trim().replaceAll("^[\"\']|[\"\']$", ""));
+                }
+            }
+        } catch (IOException ignored) {
+        }
+        return out;
+    }
+
+    private static void writeStage1Config(String sourceType) throws IOException {
+        String yaml = "source_type: " + sourceType + "\nagents_handling: log_and_export\n";
+        Files.write(STAGE1_CONFIG_PATH, yaml.getBytes(StandardCharsets.UTF_8));
+    }
+
     private static void handleAction(HttpExchange exchange) throws IOException {
         if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
             sendJson(exchange, 405, "{\"error\":\"Method not allowed\"}");
@@ -536,6 +579,20 @@ public class Main {
                 String clientExport = exportClients();
                 log("Exported clients CSV to " + clientExport);
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Exported clients\",\"path\":\"" + jsonEscape(clientExport) + "\"}");
+                break;
+            case "stage1_apply":
+                String st1 = params.getOrDefault("source_type", "").trim().toLowerCase();
+                if (!st1.equals("websites") && !st1.equals("facebook") && !st1.equals("both")) {
+                    st1 = "both";
+                }
+                try {
+                    writeStage1Config(st1);
+                    log("Stage 1 applied: source_type=" + st1);
+                    sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Stage 1 applied\",\"source_type\":\"" + jsonEscape(st1) + "\"}");
+                } catch (Exception e) {
+                    log("Stage 1 write failed: " + e.getMessage());
+                    sendJson(exchange, 500, "{\"ok\":false,\"message\":\"" + jsonEscape(e.getMessage()) + "\"}");
+                }
                 break;
             case "load_config":
                 log("Config loaded (path=" + params.getOrDefault("config_path", "config.yaml") + ")");

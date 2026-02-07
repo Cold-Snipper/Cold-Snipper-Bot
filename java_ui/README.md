@@ -11,12 +11,13 @@ cd "/Users/karlodefinis/COLD BOT/java_ui"
 /opt/homebrew/opt/openjdk/bin/java -cp out Main
 ```
 
-Then open `http://localhost:8080`.
+Then open **http://localhost:1111** (standard port for Cold Bot).
 
-Optional port:
+Override port via env or arg:
 
 ```bash
-PORT=9090 /opt/homebrew/opt/openjdk/bin/java -cp out Main
+PORT=9090 java -cp out Main
+# or: java -cp out Main 9090
 ```
 
 ## Notes

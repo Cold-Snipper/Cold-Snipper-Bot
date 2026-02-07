@@ -98,27 +98,15 @@ def send_email(
     smtp_host: str,
     db_path: str,
     max_per_hour: int,
+    subject: str | None = None,
 ) -> bool:
-    """Description.
-
-    Args:
-        to (type): desc.
-        proposal (type): desc.
-        from_email (type): desc.
-        app_pw (type): desc.
-        smtp_host (type): desc.
-
-    Returns:
-        type: desc.
-
-    Raises:
-        exc: when.
-    """
+    """Send one email. Uses subject if provided, else default."""
     if not check_recent_sends(db_path, max_per_hour):
         return False
+    subj = subject or "Real Estate Partnership Proposal"
     try:
         yag = yagmail.SMTP(from_email, app_pw, host=smtp_host)
-        yag.send(to=to, subject="Real Estate Partnership Proposal", contents=proposal)
+        yag.send(to=to, subject=subj, contents=proposal)
         yag.close()
         return True
     except Exception:

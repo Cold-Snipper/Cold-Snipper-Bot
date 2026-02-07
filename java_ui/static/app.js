@@ -42,6 +42,12 @@ const crmChannelFilter = document.getElementById("crm-channel-filter");
 const crmScoreFilter = document.getElementById("crm-score-filter");
 const crmAutoFilter = document.getElementById("crm-auto-filter");
 const crmTabButtons = document.querySelectorAll(".tab-btn[data-crm-tab]");
+const stageConfigStatusEl = document.getElementById("stage-config-status");
+const stageScanningStatusEl = document.getElementById("stage-scanning-status");
+const stageAnalysisStatusEl = document.getElementById("stage-analysis-status");
+const stageContactingStatusEl = document.getElementById("stage-contacting-status");
+const stageLoggingStatusEl = document.getElementById("stage-logging-status");
+const stageCrmStatusEl = document.getElementById("stage-crm-status");
 
 let lastIndex = 0;
 let polling = true;
@@ -87,6 +93,27 @@ async function fetchStatus() {
     scanStateEl.textContent = data.scanState ?? "-";
     lastScanEl.textContent = data.lastScanAt ?? "-";
     fbQueueCountEl.textContent = data.fbQueueCount ?? "-";
+    // Update high-level stage status pills
+    if (stageConfigStatusEl) {
+      stageConfigStatusEl.textContent = data.dbCount >= 0 ? "Ready" : "Unknown";
+    }
+    if (stageScanningStatusEl) {
+      stageScanningStatusEl.textContent = data.scanState || "Unknown";
+    }
+    if (stageAnalysisStatusEl) {
+      // Use dbCount as a proxy that analysis + LLM pipeline is writing leads.
+      stageAnalysisStatusEl.textContent = (data.dbCount ?? 0) > 0 ? "Active" : "Idle";
+    }
+    if (stageContactingStatusEl) {
+      // Use commCount as a proxy for outreach/logged comms.
+      stageContactingStatusEl.textContent = (data.commCount ?? 0) > 0 ? "Active" : "Idle";
+    }
+    if (stageLoggingStatusEl) {
+      stageLoggingStatusEl.textContent = (data.logCount ?? 0) > 0 ? "Writing Logs" : "Idle";
+    }
+    if (stageCrmStatusEl) {
+      stageCrmStatusEl.textContent = (data.clientCount ?? 0) > 0 ? "Populated" : "Empty";
+    }
   } catch (err) {
     console.warn("Status fetch failed", err);
   }
@@ -725,6 +752,48 @@ document.querySelectorAll(".tab").forEach((tab) => {
     if (target) {
       target.classList.add("active");
     }
+    if (tab.dataset.tab === "stages") {
+      fetchStage1Config();
+    }
+  });
+});
+
+async function fetchStage1Config() {
+  try {
+    const res = await fetch("/api/stage1_config");
+    const data = await res.json();
+    const el = document.getElementById("stage1-current");
+    if (el) {
+      const st = data.source_type || "—";
+      const ah = data.agents_handling || "—";
+      el.textContent = "source_type = " + st + ", agents_handling = " + ah;
+    }
+    const pill = document.getElementById("stage-config-status");
+    if (pill) pill.textContent = data.source_type ? "Ready" : "Pending";
+  } catch (err) {
+    const el = document.getElementById("stage1-current");
+    if (el) el.textContent = "— (error)";
+  }
+}
+
+document.querySelectorAll(".stage1-btn").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    const sourceType = btn.dataset.stage1;
+    const msgEl = document.getElementById("stage1-result-msg");
+    try {
+      const res = await fetch("/api/action?name=stage1_apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "source_type=" + encodeURIComponent(sourceType),
+      });
+      const data = await res.json();
+      if (msgEl) {
+        msgEl.textContent = data.ok ? "Applied: " + sourceType : (data.message || "Failed");
+      }
+      fetchStage1Config();
+    } catch (err) {
+      if (msgEl) msgEl.textContent = "Error";
+    }
   });
 });
 
@@ -762,6 +831,7 @@ refreshFbQueue();
 refreshClients("");
 loadTargets();
 updateScanModeUI();
+fetchStage1Config();
 setInterval(fetchStatus, 2000);
 setInterval(fetchLogs, 1000);
 setInterval(() => refreshLeads(lastQuery), 5000);
