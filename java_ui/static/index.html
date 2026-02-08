@@ -67,22 +67,20 @@
         </div>
       </section>
 
-      <section class="panel">
-        <h2>Scan Mode</h2>
-        <div class="toggle-row">
-          <label class="toggle">
-            <input type="radio" name="scan-mode" value="website" checked />
-            Website Scrape (into database + CRM)
-          </label>
-          <label class="toggle">
-            <input type="radio" name="scan-mode" value="facebook" />
-            FB Marketplace Search (logged-in user)
-          </label>
+      <section class="panel scan-output-panel">
+        <h2>Scan commands &amp; live output</h2>
+        <p class="hint-text">All data feeds are real (stage plan: website scraper → leads; FB feed analyzer → queue). No simulation. Click the <strong>Website Scrape</strong> or <strong>Facebook</strong> panel below to switch mode; then run scans from that panel.</p>
+        <div class="buttons scan-actions-row">
+          <button class="danger" data-action="reset_all_scanned_data" id="btn-reset-scanned">Reset all scanned data</button>
+          <button class="primary" data-action="export_excel" id="btn-export-excel">Save to Excel (.xls)</button>
         </div>
+        <h3 class="data-feed-heading">Data feed</h3>
+        <p class="hint-text data-feed-hint">Real-time stream from scans (website + FB). Reset clears leads and FB queue; Save to Excel downloads current leads.</p>
+        <div id="log-list" class="logs scan-output-box"></div>
       </section>
 
       <div class="mode-grid">
-        <section class="mode-panel active" id="website-scan-setup">
+        <section class="mode-panel mode-panel-clickable active" id="website-scan-setup" data-scan-mode="website" tabindex="0" role="button" aria-label="Select Website Scrape mode">
           <div class="mode-header">
             <h2>Website Scrape Setup</h2>
             <span class="mode-pill">Database + CRM</span>
@@ -178,7 +176,7 @@
           </div>
         </section>
 
-        <section class="mode-panel" id="facebook-scan-setup">
+        <section class="mode-panel mode-panel-clickable" id="facebook-scan-setup" data-scan-mode="facebook" tabindex="0" role="button" aria-label="Select Facebook scan mode">
           <div class="mode-header">
             <h2>Facebook scan</h2>
             <span class="mode-pill">Marketplace or Groups → Analyze → Contact</span>
@@ -316,10 +314,9 @@
             </div>
             <div class="settings-group">
               <div class="settings-title">Actions</div>
-              <p class="hint-text"><strong>Analyze Feed</strong> opens a real browser (Playwright), loads the Marketplace or Group URL(s), scrolls the feed, and appends listing links to the queue below. Use Marketplace (city + keywords) or Groups (one URL per line). Refresh the queue table after the scan finishes. <strong>Save URLs</strong> is for adding mock URLs only.</p>
+              <p class="hint-text">Data feed is real only (stage plan). <strong>Analyze Feed</strong> opens a browser, loads Marketplace or Group URL(s), and appends listing links to the queue below. Use Marketplace (city + keywords) or Groups (one URL per line). Refresh the queue table after the scan finishes.</p>
               <div class="buttons">
                 <button data-action="fb_analyze">Analyze Feed</button>
-                <button data-action="fb_save_urls">Save URLs</button>
                 <button class="secondary" data-action="fb_mark_contacted">Mark Contacted</button>
                 <button class="secondary" data-action="fb_clear_queue">Clear Queue</button>
               </div>
@@ -424,10 +421,6 @@
         </div>
       </section>
 
-      <section class="panel">
-        <h2>Output Monitor</h2>
-        <div id="log-list" class="logs"></div>
-      </section>
     </div>
 
     <div class="tab-content" id="tab-client-communications">

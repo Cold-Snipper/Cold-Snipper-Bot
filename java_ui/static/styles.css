@@ -150,6 +150,26 @@ header p {
   flex: 1 1 260px;
 }
 
+.hint-text {
+  font-size: 12px;
+  color: #8f97a6;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.hint-text code {
+  background: #1c2030;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.label-optional {
+  font-weight: normal;
+  color: #6b7280;
+  font-size: 11px;
+}
+
 input,
 textarea,
 select {
@@ -204,6 +224,16 @@ textarea {
 .mode-panel.inactive {
   opacity: 0.55;
   filter: grayscale(0.2);
+}
+
+.mode-panel-clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+.mode-panel-clickable:hover.inactive {
+  opacity: 0.85;
+  filter: grayscale(0.05);
 }
 
 .mode-header {
@@ -378,6 +408,14 @@ button.danger {
   background: #cc3a3a;
 }
 
+button.primary {
+  background: #1a8a3e;
+}
+
+button.primary:hover {
+  background: #22a34a;
+}
+
 .response {
   margin-top: 12px;
   padding: 10px 12px;
@@ -417,6 +455,27 @@ th {
 td a {
   color: #8bd3ff;
   text-decoration: none;
+}
+
+.scan-output-panel .scan-actions-row {
+  margin-bottom: 14px;
+}
+
+.scan-output-panel .data-feed-heading {
+  margin: 16px 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #b7bcc4;
+}
+
+.scan-output-panel .data-feed-hint {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.scan-output-panel .scan-output-box.logs {
+  min-height: 280px;
+  max-height: 420px;
 }
 
 .logs {

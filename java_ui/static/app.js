@@ -15,7 +15,7 @@ const actionResponse = document.getElementById("action-response");
 const countrySelect = document.getElementById("country");
 const targetSiteSelect = document.getElementById("target-site");
 const fbQueueCountEl = document.getElementById("fb-queue-count");
-const scanModeInputs = document.querySelectorAll("input[name='scan-mode']");
+let selectedScanMode = "website";
 const websiteScanSetup = document.getElementById("website-scan-setup");
 const facebookScanSetup = document.getElementById("facebook-scan-setup");
 const clientsBody = document.getElementById("clients-body");
@@ -288,8 +288,7 @@ function buildPayload(name) {
         listing_selector: readValue("listing-selector"),
         site_headless: readChecked("site-headless"),
       };
-    case "fb_analyze":
-    case "fb_save_urls": {
+    case "fb_analyze": {
       const sourceType = readValue("fb-source-type");
       let fbSearchUrl = readValue("fb-search-url");
       if (sourceType === "marketplace") {
@@ -417,12 +416,13 @@ function buildPayload(name) {
 }
 
 function currentScanMode() {
-  for (const input of scanModeInputs) {
-    if (input.checked) {
-      return input.value;
-    }
+  return selectedScanMode;
+}
+
+function setScanMode(mode) {
+  if (mode === "website" || mode === "facebook") {
+    selectedScanMode = mode;
   }
-  return "website";
 }
 
 function updateScanModeUI() {
@@ -438,6 +438,14 @@ function updateScanModeUI() {
 }
 
 async function sendAction(name) {
+  if (name === "reset_all_scanned_data" && !confirm("Clear all leads and FB queue? This cannot be undone.")) {
+    return;
+  }
+  if (name === "export_excel") {
+    window.location.href = "/api/export/leads.xls";
+    showResponse("Download started (leads_export.xls)");
+    return;
+  }
   const payload = buildPayload(name);
   const params = new URLSearchParams(payload);
   try {
@@ -465,10 +473,14 @@ async function sendAction(name) {
     if (name === "mark_contacted" || name === "delete_selected") {
       refreshLeads(lastQuery);
     }
-    if (name === "fb_save_urls" || name === "fb_analyze") {
+    if (name === "fb_analyze") {
       refreshFbQueue();
     }
     if (name === "fb_mark_contacted" || name === "fb_clear_queue") {
+      refreshFbQueue();
+    }
+    if (name === "reset_all_scanned_data") {
+      refreshLeads(lastQuery);
       refreshFbQueue();
     }
     if (name === "add_comm") {
@@ -887,8 +899,26 @@ filterElements.forEach((el) => {
   }
 });
 
-scanModeInputs.forEach((input) => {
-  input.addEventListener("change", updateScanModeUI);
+[websiteScanSetup, facebookScanSetup].forEach((panel) => {
+  if (!panel) return;
+  panel.addEventListener("click", (e) => {
+    if (e.target.closest("button, input, select, textarea, a, [data-action]")) return;
+    const mode = panel.getAttribute("data-scan-mode");
+    if (mode) {
+      setScanMode(mode);
+      updateScanModeUI();
+    }
+  });
+  panel.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const mode = panel.getAttribute("data-scan-mode");
+      if (mode) {
+        setScanMode(mode);
+        updateScanModeUI();
+      }
+    }
+  });
 });
 
 function updateFbSourceUI() {

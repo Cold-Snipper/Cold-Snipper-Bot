@@ -12,22 +12,21 @@ It is a **testing console** that lets you:
 - Trigger **browser-driven outreach** (forms + Messenger).
 - Manage a CRM-style pipeline: clients, communications, stages, and automation.
 
-### 2) Website Scrape (Test Mode)
-The Website Scrape mode in the UI is **currently simulated** for testing.  
-When you click **Start Scan**, it creates mock leads and stores them locally in:
+### 2) Website Scrape (Real)
+The Website Scrape mode uses **real** Playwright scraping via `cold_bot/site_scraper.py`.  
+When you click **Start Scan** or **Test Single Page**, a browser opens, loads the start URL(s), scrolls and extracts listing links; new leads are appended to:
 - `java_ui/data/leads.csv`
 
-These leads appear in the Leads table for review, status changes, export, and deletion.
+No simulation. Data feed follows the stage plan (config → browser_automation → data_scraper → leads).
 
-### 3) FB Marketplace Flow (Test Mode)
-The FB flow is a **two-stage mock pipeline**:
-1. **Analyze Feed**: logs analysis activity (no live scraping yet)
-2. **Save URLs**: creates and stores mock Marketplace URLs in:
+### 3) FB Marketplace Flow (Real)
+The FB flow is **real only** (stage plan):
+1. **Analyze Feed**: runs `cold_bot/fb_feed_analyzer.py` (Playwright), loads Marketplace or Group URL(s), and appends listing links to:
    - `java_ui/data/fb_queue.csv`
+2. **Save URLs** (mock) has been removed; only Analyze Feed adds FB URLs.
 
-You can then mark items contacted or clear the queue.  
-There is also a **browser-driven send** step (Playwright) that can message
-queued URLs if a logged-in FB storage state exists.
+You can mark items contacted or clear the queue.  
+**Send Messages (Browser)** runs `cold_bot/fb_messenger.py` (Playwright) to message queued URLs when a logged-in FB storage state exists.
 
 ### 4) Website Form Outreach (Real Browser Automation)
 The UI can trigger browser automation to submit **website contact forms**
@@ -74,16 +73,16 @@ Stored in `java_ui/data/fb_queue.csv` with fields:
 
 ## What Is Real vs. Mock
 
-**Real today:**
+**Real (no simulation):**
 - Local UI and API routing
 - Local CSV persistence
+- Website scan (site_scraper.py → leads.csv)
+- FB feed analysis (fb_feed_analyzer.py → fb_queue.csv)
+- Browser-driven outreach (site_forms.py, fb_messenger.py)
 - CRM workflow and client panel behaviors
-- Browser-driven outreach (forms + Messenger)
+- Data feed: real-time stream from scans only
 
-**Mock today:**
-- Website scan (creates mock leads)
-- FB marketplace analysis (logs only)
-- FB URL save (mock URLs)
+**Removed:** All mock/simulation (Lead.mock, FbQueueItem.mock, saveFbUrls mock, simulateAction, simulateScan). Data feeds are hooked to the stage plan (config → browser_automation → data_scraper / feed analyzer).
 
 ## How To Run
 

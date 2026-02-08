@@ -134,6 +134,10 @@ public class Main {
                 handleAction(exchange);
                 return;
             }
+            if ("/api/export/leads.xls".equals(path)) {
+                handleExportLeadsXls(exchange);
+                return;
+            }
             sendJson(exchange, 404, "{\"error\":\"Not found\"}");
         }
     }
@@ -486,6 +490,15 @@ public class Main {
                 log("Exported CSV to " + exportPath);
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Exported CSV\",\"path\":\"" + jsonEscape(exportPath) + "\"}");
                 break;
+            case "export_excel":
+                log("Export to Excel requested");
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Opening download\",\"downloadUrl\":\"/api/export/leads.xls\"}");
+                break;
+            case "reset_all_scanned_data":
+                resetAllScannedData();
+                log("Reset all scanned data (leads + FB queue)");
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"All scanned data reset (leads and FB queue cleared)\"}");
+                break;
             case "clear_database":
                 clearDatabase();
                 log("Database cleared");
@@ -533,9 +546,8 @@ public class Main {
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"FB analysis started (browser will open; refresh queue when done)\"}");
                 break;
             case "fb_save_urls":
-                int saved = saveFbUrls(params, 6);
-                log("FB URLs saved: " + saved);
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Saved URLs: " + saved + "\"}");
+                log("FB save URLs skipped (use Analyze Feed for real URLs)");
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Use Analyze Feed to add real URLs from Facebook.\"}");
                 break;
             case "fb_mark_contacted":
                 int markedFb = updateFbStatus(params.getOrDefault("ids", ""), "contacted");
@@ -607,19 +619,10 @@ public class Main {
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"LLM prompt tested\"}");
                 break;
             default:
-                log("Action requested: " + name);
-                BACKGROUND.submit(() -> simulateAction(name));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Action accepted\"}");
+                log("Unknown action: " + name);
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Unknown action\"}");
                 break;
         }
-    }
-
-    private static void simulateAction(String name) {
-        log("Action " + name + " started");
-        sleep(300);
-        log("Action " + name + " running");
-        sleep(500);
-        log("Action " + name + " finished");
     }
 
     private static void runRealSiteScan(Map<String, String> params, boolean singlePageOnly) {
@@ -1271,26 +1274,6 @@ public class Main {
         return deleted;
     }
 
-    private static int saveFbUrls(Map<String, String> params, int count) {
-        int saved = 0;
-        for (int i = 0; i < count; i++) {
-            FbQueueItem item = FbQueueItem.mock(params);
-            if (item == null) {
-                continue;
-            }
-            FB_QUEUE.add(item);
-            saved++;
-        }
-        if (saved > 0) {
-            try {
-                persistFbQueue();
-            } catch (IOException e) {
-                log("Failed to persist FB queue: " + e.getMessage());
-            }
-        }
-        return saved;
-    }
-
     private static int updateFbStatus(String idsParam, String status) {
         List<Integer> ids = parseIds(idsParam);
         int updated = 0;
@@ -1400,6 +1383,34 @@ public class Main {
             log("Backup failed: " + e.getMessage());
         }
         return target.toString();
+    }
+
+    private static void resetAllScannedData() {
+        LEADS.clear();
+        NEXT_ID.set(1);
+        FB_QUEUE.clear();
+        NEXT_FB_ID.set(1);
+        try {
+            persistLeads();
+            persistFbQueue();
+        } catch (IOException e) {
+            log("Failed to reset scanned data: " + e.getMessage());
+        }
+    }
+
+    private static void handleExportLeadsXls(HttpExchange exchange) throws IOException {
+        if (!Files.exists(leadsFile)) {
+            sendJson(exchange, 404, "{\"error\":\"No leads file\"}");
+            return;
+        }
+        byte[] data = Files.readAllBytes(leadsFile);
+        Headers headers = exchange.getResponseHeaders();
+        headers.set("Content-Type", "application/vnd.ms-excel; charset=utf-8");
+        headers.set("Content-Disposition", "attachment; filename=\"leads_export.xls\"");
+        exchange.sendResponseHeaders(200, data.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(data);
+        }
     }
 
     private static void clearDatabase() {
@@ -1543,19 +1554,6 @@ public class Main {
             this.contactPhone = contactPhone;
             this.scanTime = scanTime;
             this.status = status;
-        }
-
-        private static Lead mock(Map<String, String> params) {
-            String city = params.getOrDefault("city", "Miami");
-            String priceHint = params.getOrDefault("max_price", "500000");
-            String title = "FSBO " + city + " - " + priceHint;
-            String url = "https://example.com/listing/" + UUID.randomUUID();
-            String description = "Owner selling. Motivated seller. Call today.";
-            String email = "owner" + (int) (Math.random() * 900 + 100) + "@example.com";
-            String phone = "+1-305-" + (int) (Math.random() * 900 + 100) + "-" + (int) (Math.random() * 9000 + 1000);
-            String scanTime = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-            return new Lead(NEXT_ID.getAndIncrement(), url, title, description, "$" + priceHint, city,
-                    email, phone, scanTime, "new");
         }
 
         private boolean matches(String query) {
@@ -1792,13 +1790,6 @@ public class Main {
             this.url = url;
             this.status = status;
             this.savedAt = savedAt;
-        }
-
-        private static FbQueueItem mock(Map<String, String> params) {
-            String base = params.getOrDefault("fb_search_url", "https://www.facebook.com/marketplace/");
-            String url = base + "item/" + UUID.randomUUID();
-            String savedAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-            return new FbQueueItem(NEXT_FB_ID.getAndIncrement(), url, "queued", savedAt);
         }
 
         private String toCsv() {
