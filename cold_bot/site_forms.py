@@ -1,3 +1,10 @@
+"""
+Real website contact form submitter (no simulation).
+- Playwright: real browser, real page load (networkidle or domcontentloaded), real form fill/submit.
+- Loads leads from CSV, visits each pending lead URL, finds message/comment field (multiple
+  selectors including placeholder/aria-label), fills message, submits via form-scoped button or Enter.
+- Retries each URL once (networkidle then domcontentloaded). Updates status to contacted/failed, saves CSV.
+"""
 import argparse
 import csv
 import sys
@@ -16,10 +23,14 @@ MESSAGE_SELECTORS = [
     "textarea",
     "textarea[name*='message' i]",
     "textarea[name*='comment' i]",
+    "textarea[placeholder*='message' i]",
+    "textarea[placeholder*='comment' i]",
+    "textarea[data-placeholder*='message' i]",
     "textarea[aria-label*='message' i]",
     "textarea[aria-label*='comment' i]",
     "input[name*='message' i]",
     "input[name*='comment' i]",
+    "input[placeholder*='message' i]",
     "input[aria-label*='message' i]",
 ]
 
@@ -48,6 +59,9 @@ def save_leads(path: Path, rows: List[Dict[str, str]]) -> None:
         "description",
         "price",
         "location",
+        "bedrooms",
+        "size",
+        "listing_type",
         "contact_email",
         "contact_phone",
         "scan_time",
@@ -71,9 +85,10 @@ def find_message_input(page):
     return None
 
 
-def click_submit(page) -> bool:
+def click_submit(page, within_form=None) -> bool:
+    scope = within_form if within_form is not None else page
     for selector in SUBMIT_SELECTORS:
-        locator = page.locator(selector).first
+        locator = scope.locator(selector).first
         try:
             if locator.is_visible(timeout=2000):
                 locator.click()
@@ -89,6 +104,12 @@ def attempt_form_submit(page, message: str) -> bool:
         return False
     message_input.click()
     message_input.fill(message)
+    try:
+        form = message_input.locator("xpath=ancestor::form")
+        if form.count() > 0:
+            return click_submit(page, within_form=form.first) or click_submit(page)
+    except Exception:
+        pass
     return click_submit(page)
 
 
@@ -115,18 +136,38 @@ def main() -> int:
         browser = p.chromium.launch(headless=args.headless)
         context = browser.new_context()
         page = context.new_page()
+        page.set_default_timeout(30_000)
+        page.set_default_navigation_timeout(30_000)
         for row in to_send:
             url = row.get("url", "")
             if not url:
                 continue
-            try:
-                page.goto(url, wait_until="domcontentloaded")
-                ok = attempt_form_submit(page, args.message)
-                row["status"] = "contacted" if ok else "failed"
-                print(f"{row['status']}: {url[:80]}{'...' if len(url) > 80 else ''}", flush=True)
-            except Exception as e:
+            ok = False
+            for attempt in range(2):
+                try:
+                    page.goto(url, wait_until="networkidle", timeout=30_000)
+                    time.sleep(1.0)
+                    ok = attempt_form_submit(page, args.message)
+                    if ok:
+                        break
+                except Exception as e:
+                    if attempt == 0:
+                        try:
+                            page.goto(url, wait_until="domcontentloaded", timeout=25_000)
+                            time.sleep(1.0)
+                            ok = attempt_form_submit(page, args.message)
+                        except Exception:
+                            pass
+                    if not ok:
+                        row["status"] = "failed"
+                        print(f"failed: {url[:80]}{'...' if len(url) > 80 else ''} ({e})", flush=True)
+                        break
+            if ok:
+                row["status"] = "contacted"
+                print(f"contacted: {url[:80]}{'...' if len(url) > 80 else ''}", flush=True)
+            else:
                 row["status"] = "failed"
-                print(f"failed: {url[:80]}... ({e})", flush=True)
+                print(f"failed: {url[:80]}{'...' if len(url) > 80 else ''} (no form found)", flush=True)
             time.sleep(args.delay)
         context.close()
         browser.close()

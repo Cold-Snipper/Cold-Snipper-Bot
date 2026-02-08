@@ -66,31 +66,20 @@ def scroll_and_navigate(
     depth: int,
     min_delay: int,
     max_delay: int,
+    timeout_ms: int = 60_000,
 ) -> None:
-    """Description.
-
-    Args:
-        page (type): desc.
-        url (type): desc.
-        depth (type): desc.
-        min_delay (type): desc.
-        max_delay (type): desc.
-
-    Returns:
-        type: desc.
-
-    Raises:
-        exc: when.
-    """
+    """Navigate to URL, wait for load, then scroll the page to trigger dynamic content."""
+    goto_opts = {"timeout": timeout_ms, "wait_until": "domcontentloaded"}
     try:
-        page.goto(url)
+        page.goto(url, **goto_opts)
+        page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
         for _ in range(depth):
             page.mouse.move(random.randint(0, 800), random.randint(0, 600))
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
             random_delay(min_delay, max_delay)
     except Error:
         time.sleep(1)
-        page.goto(url)
+        page.goto(url, **goto_opts)
         for _ in range(depth):
             page.mouse.move(random.randint(0, 800), random.randint(0, 600))
             page.evaluate("window.scrollTo(0, document.body.scrollHeight)")

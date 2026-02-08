@@ -1,3 +1,9 @@
+"""
+Real Facebook Messenger sender (no simulation).
+- Playwright: real browser with storage_state (logged-in session), real navigation to listing URL,
+  real click on Message, real message box fill, real Send (button or Enter).
+- Loads queued URLs from fb_queue.csv, requires config/storage_state for auth. Updates status, saves CSV.
+"""
 import argparse
 import csv
 import sys
@@ -83,13 +89,32 @@ def click_message_button(page) -> bool:
 def send_message(page, message: str) -> bool:
     if not click_message_button(page):
         return False
+    time.sleep(1.0)
     box = find_message_box(page)
     if box is None:
         return False
     box.click()
     box.fill(message)
-    box.press("Enter")
-    return True
+    send_selectors = [
+        "[aria-label*='Send' i]",
+        "button:has-text('Send')",
+        "[data-testid*='send']",
+        "div[role='button']:has-text('Send')",
+    ]
+    sent = False
+    for sel in send_selectors:
+        try:
+            btn = page.locator(sel).first
+            if btn.is_visible(timeout=1500):
+                btn.click()
+                sent = True
+                break
+        except PlaywrightTimeoutError:
+            continue
+    if not sent:
+        box.press("Enter")
+        sent = True
+    return sent
 
 
 def main() -> int:
@@ -127,16 +152,20 @@ def main() -> int:
         browser = p.chromium.launch(headless=args.headless)
         context = browser.new_context(storage_state=str(storage_state))
         page = context.new_page()
+        page.set_default_navigation_timeout(30_000)
+        page.set_default_timeout(15_000)
         for row in to_send:
             url = row.get("url", "")
             if not url:
                 continue
             try:
-                page.goto(url, wait_until="domcontentloaded")
+                page.goto(url, wait_until="domcontentloaded", timeout=30_000)
                 ok = send_message(page, args.message)
                 row["status"] = "contacted" if ok else "failed"
-            except Exception:
+                print(f"{row['status']}: {url[:80]}{'...' if len(url) > 80 else ''}", flush=True)
+            except Exception as e:
                 row["status"] = "failed"
+                print(f"failed: {url[:80]}{'...' if len(url) > 80 else ''} ({e})", flush=True)
             time.sleep(args.delay)
         context.close()
         browser.close()

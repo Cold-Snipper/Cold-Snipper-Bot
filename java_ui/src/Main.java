@@ -232,10 +232,14 @@ public class Main {
         }
         String q = query.getOrDefault("q", "").toLowerCase();
         String status = query.getOrDefault("status", "").toLowerCase();
+        String listingTypeFilter = query.getOrDefault("listing_type", "").toLowerCase();
 
         List<Lead> filtered = new ArrayList<>();
         for (Lead lead : LEADS) {
             if (!status.isEmpty() && !lead.status.toLowerCase().equals(status)) {
+                continue;
+            }
+            if (!listingTypeFilter.isEmpty() && !lead.listingType.toLowerCase().equals(listingTypeFilter)) {
                 continue;
             }
             if (!q.isEmpty() && !lead.matches(q)) {
@@ -982,6 +986,13 @@ public class Main {
                 if (parts.size() < 10) {
                     continue;
                 }
+                String bedrooms = parts.size() > 6 ? parts.get(6) : "";
+                String size = parts.size() > 7 ? parts.get(7) : "";
+                String listingType = parts.size() > 8 ? parts.get(8) : "";
+                int emailIdx = parts.size() >= 13 ? 9 : 6;
+                int phoneIdx = parts.size() >= 13 ? 10 : 7;
+                int scanIdx = parts.size() >= 13 ? 11 : 8;
+                int statusIdx = parts.size() >= 13 ? 12 : 9;
                 Lead lead = new Lead(
                         parseInt(parts.get(0), NEXT_ID.get()),
                         parts.get(1),
@@ -989,10 +1000,13 @@ public class Main {
                         parts.get(3),
                         parts.get(4),
                         parts.get(5),
-                        parts.get(6),
-                        parts.get(7),
-                        parts.get(8),
-                        parts.get(9)
+                        bedrooms,
+                        size,
+                        listingType,
+                        parts.get(emailIdx),
+                        parts.get(phoneIdx),
+                        parts.get(scanIdx),
+                        parts.get(statusIdx)
                 );
                 LEADS.add(lead);
                 NEXT_ID.set(Math.max(NEXT_ID.get(), lead.id + 1));
@@ -1117,7 +1131,7 @@ public class Main {
 
     private static synchronized void persistLeads() throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(leadsFile), StandardCharsets.UTF_8))) {
-            writer.write("id,url,title,description,price,location,contact_email,contact_phone,scan_time,status");
+            writer.write("id,url,title,description,price,location,bedrooms,size,listing_type,contact_email,contact_phone,scan_time,status");
             writer.newLine();
             for (Lead lead : LEADS) {
                 writer.write(lead.toCsv());
@@ -1537,12 +1551,16 @@ public class Main {
         private final String description;
         private final String price;
         private final String location;
+        private final String bedrooms;
+        private final String size;
+        private final String listingType;
         private final String contactEmail;
         private final String contactPhone;
         private final String scanTime;
         private String status;
 
         private Lead(int id, String url, String title, String description, String price, String location,
+                     String bedrooms, String size, String listingType,
                      String contactEmail, String contactPhone, String scanTime, String status) {
             this.id = id;
             this.url = url;
@@ -1550,6 +1568,9 @@ public class Main {
             this.description = description;
             this.price = price;
             this.location = location;
+            this.bedrooms = bedrooms != null ? bedrooms : "";
+            this.size = size != null ? size : "";
+            this.listingType = listingType != null ? listingType : "";
             this.contactEmail = contactEmail;
             this.contactPhone = contactPhone;
             this.scanTime = scanTime;
@@ -1557,7 +1578,7 @@ public class Main {
         }
 
         private boolean matches(String query) {
-            String haystack = (title + " " + description + " " + price + " " + location + " " + contactEmail + " " + contactPhone).toLowerCase();
+            String haystack = (title + " " + description + " " + price + " " + location + " " + bedrooms + " " + size + " " + listingType + " " + contactEmail + " " + contactPhone).toLowerCase();
             return haystack.contains(query);
         }
 
@@ -1568,6 +1589,9 @@ public class Main {
                     + csvEscape(description) + ","
                     + csvEscape(price) + ","
                     + csvEscape(location) + ","
+                    + csvEscape(bedrooms) + ","
+                    + csvEscape(size) + ","
+                    + csvEscape(listingType) + ","
                     + csvEscape(contactEmail) + ","
                     + csvEscape(contactPhone) + ","
                     + csvEscape(scanTime) + ","
@@ -1582,6 +1606,9 @@ public class Main {
                     + "\"description\":\"" + jsonEscape(description) + "\","
                     + "\"price\":\"" + jsonEscape(price) + "\","
                     + "\"location\":\"" + jsonEscape(location) + "\","
+                    + "\"bedrooms\":\"" + jsonEscape(bedrooms) + "\","
+                    + "\"size\":\"" + jsonEscape(size) + "\","
+                    + "\"listingType\":\"" + jsonEscape(listingType) + "\","
                     + "\"contactEmail\":\"" + jsonEscape(contactEmail) + "\","
                     + "\"contactPhone\":\"" + jsonEscape(contactPhone) + "\","
                     + "\"scanTime\":\"" + jsonEscape(scanTime) + "\","

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-Real website listing scraper for the Java UI.
-Uses Playwright to open start URL(s), scroll the page, extract listing cards
-with a configurable CSS selector, parses title/price/location/contact from card text,
-and appends new leads to java_ui/data/leads.csv (same format as Java: id, url, title,
-description, price, location, contact_email, contact_phone, scan_time, status).
+Real website listing scraper (no simulation).
+- Playwright: real browser, real navigation, real DOM extraction.
+- Opens start URL(s), waits for load (60s timeout), scrolls to trigger dynamic content,
+  optionally waits for listing selector, extracts cards via data_scraper.extract_listings.
+- Parses title, price, location, bedrooms, size, listing_type, email, phone from card text.
+- Appends new leads to leads.csv. Retries navigation once on failure.
 """
 import argparse
 import csv
@@ -28,17 +29,21 @@ DEFAULT_DELAY_MAX = 12
 
 LEADS_FIELDS = [
     "id", "url", "title", "description", "price", "location",
+    "bedrooms", "size", "listing_type",
     "contact_email", "contact_phone", "scan_time", "status",
 ]
 
 
 def parse_listing_text(text: str, url: str) -> dict:
-    """Extract title, price, location, email, phone from card text."""
+    """Extract title, price, location, bedrooms, size, listing_type, email, phone from card text."""
     lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
     title = lines[0][:200] if lines else "Listing"
     description = (text or "")[:2000].replace("\n", " ")
     price = ""
     location = ""
+    bedrooms = ""
+    size = ""
+    listing_type = ""
     price_match = re.search(r"\$[\d,]+(?:\s*(?:USD|EUR|GBP))?", text or "")
     if price_match:
         price = price_match.group(0)
@@ -48,6 +53,19 @@ def parse_listing_text(text: str, url: str) -> dict:
     loc_match = re.search(r"(?:in|at|near|location:?)\s*([A-Za-z0-9\s,-]+?)(?:\n|$|[0-9]{5})", text or "", re.IGNORECASE)
     if loc_match:
         location = loc_match.group(1).strip()[:120]
+    bed_match = re.search(r"(\d+)\s*(?:bed|bedroom|chambre)s?", text or "", re.IGNORECASE)
+    if bed_match:
+        bedrooms = bed_match.group(1)
+    size_m2 = re.search(r"(\d+(?:[.,]\d+)?)\s*m²", text or "", re.IGNORECASE)
+    size_sqft = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:sq\.?\s*ft|sqft)", text or "", re.IGNORECASE)
+    if size_m2:
+        size = size_m2.group(1).replace(",", ".") + " m²"
+    elif size_sqft:
+        size = size_sqft.group(1).replace(",", ".") + " sqft"
+    if "/rent/" in url or "/rental" in url or re.search(r"\brent\b", (text or ""), re.IGNORECASE):
+        listing_type = "rent"
+    elif "/buy/" in url or "/sale" in url or "/sell" in url or re.search(r"\b(?:for sale|buy|sale)\b", (text or ""), re.IGNORECASE):
+        listing_type = "buy"
     contacts = extract_contacts(text or "")
     return {
         "url": url,
@@ -55,6 +73,9 @@ def parse_listing_text(text: str, url: str) -> dict:
         "description": description,
         "price": price,
         "location": location,
+        "bedrooms": bedrooms,
+        "size": size,
+        "listing_type": listing_type,
         "contact_email": contacts.get("email", ""),
         "contact_phone": contacts.get("phone", ""),
     }
@@ -131,10 +152,23 @@ def main() -> int:
         context = browser.new_context(**opts)
         page = context.new_page()
 
+        page.set_default_timeout(60_000)
         all_leads = []
         for url in urls:
             print(f"Opening {url}", flush=True)
-            scroll_and_navigate(page, url, scroll_depth, delay_min, delay_max)
+            for attempt in range(2):
+                try:
+                    scroll_and_navigate(page, url, scroll_depth, delay_min, delay_max, timeout_ms=60_000)
+                    break
+                except Exception as e:
+                    if attempt == 1:
+                        print(f"Failed to load {url}: {e}", flush=True)
+                        raise
+                    random_delay(3, 6)
+            try:
+                page.wait_for_selector(selector.split(",")[0].strip(), timeout=10_000)
+            except Exception:
+                pass
             listings = extract_listings(page, selector, site=None)
             for lst in listings:
                 href = (lst.get("url") or "").strip()

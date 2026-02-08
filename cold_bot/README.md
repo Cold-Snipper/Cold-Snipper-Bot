@@ -25,13 +25,17 @@ in a local SQLite DB (no photos):
 
 `python athome_scan.py --start-url "https://www.athome.lu/en/apartment" --limit 10 --db listings.db`
 
-## Real Scrapers & Outreach (Playwright)
-The Java UI triggers these Python scripts (run from repo root with `cold_bot` as CWD for the UI, or set `PATH=cold_bot/.venv/bin:$PATH` so `python3` has Playwright):
+## Real Scrapers & Outreach (Playwright — no simulation)
+All four tools use a real browser (Playwright/Chromium), real HTTP navigation, and real DOM/form interaction. No mocks or stubs.
 
-- **Website scan**: `site_scraper.py` — opens start URL(s), scrolls, extracts listing links/cards, appends to `java_ui/data/leads.csv`.
-- **FB feed analyze**: `fb_feed_analyzer.py` — opens Marketplace/Group URL(s), extracts listing links, appends to `java_ui/data/fb_queue.csv`.
-- **FB Messenger**: `fb_messenger.py` — sends messages to queued FB listing URLs.
-- **Website Forms**: `site_forms.py` — visits lead URLs and submits the message in the first contact form found.
+| Tool | What it does (real behavior) |
+|------|------------------------------|
+| **site_scraper.py** | Launches browser, navigates to each start URL (60s timeout, retry once), scrolls to trigger dynamic content, waits for listing selector if present, extracts cards via `data_scraper.extract_listings`, parses price/location/bedrooms/size/listing_type/contacts, appends new rows to `leads.csv`. |
+| **fb_feed_analyzer.py** | Launches browser (optional `--storage-state` for logged-in FB), navigates to Marketplace/Group URL(s), waits for feed selector (15s), scrolls, extracts listing links, appends to `fb_queue.csv`. Skips URL on load failure and continues. |
+| **site_forms.py** | Loads pending leads from `leads.csv`, opens each URL (networkidle then fallback domcontentloaded, 30s timeout, retry once), finds message/comment field (textarea/input by name, placeholder, aria-label), fills message, submits via form-scoped submit button or generic submit; updates status contacted/failed and saves CSV. |
+| **fb_messenger.py** | Requires logged-in session (`storage_state` from config or `fb_storage_state.json`). Loads queued URLs from `fb_queue.csv`, navigates to each (30s timeout), clicks Message, finds contenteditable message box, fills text, clicks Send (aria-label/button) or presses Enter; updates status and saves CSV. |
+
+The Java UI triggers these scripts; ensure `python3` has Playwright (`PATH=cold_bot/.venv/bin:$PATH` or install globally).
 
 Recommended: use a venv and install Playwright so the UI’s `python3` can run them:
 

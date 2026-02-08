@@ -9,7 +9,7 @@ PORT="${1:-1111}"
 
 echo "=== Resetting local data (leads + FB queue) ==="
 mkdir -p java_ui/data
-printf '%s\n' "id,url,title,description,price,location,contact_email,contact_phone,scan_time,status" > java_ui/data/leads.csv
+printf '%s\n' "id,url,title,description,price,location,bedrooms,size,listing_type,contact_email,contact_phone,scan_time,status" > java_ui/data/leads.csv
 printf '%s\n' "id,url,status,saved_at" > java_ui/data/fb_queue.csv
 echo "  java_ui/data/leads.csv and fb_queue.csv cleared."
 

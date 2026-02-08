@@ -401,6 +401,17 @@
 
       <section class="panel">
         <h2>Leads Preview</h2>
+        <div class="form-row" style="margin-bottom: 12px;">
+          <label>
+            Listing type
+            <select id="listing-type-filter">
+              <option value="">All</option>
+              <option value="buy">Buy</option>
+              <option value="rent">Rent</option>
+            </select>
+          </label>
+          <button type="button" class="secondary" id="btn-apply-listing-filter">Apply filter</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -408,7 +419,10 @@
                 <th></th>
                 <th>ID</th>
                 <th>Title</th>
+                <th>Type</th>
                 <th>Price</th>
+                <th>Bedrooms</th>
+                <th>Size</th>
                 <th>Location</th>
                 <th>Status</th>
                 <th>Email</th>

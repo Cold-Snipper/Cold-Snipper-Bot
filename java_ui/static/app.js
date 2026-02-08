@@ -514,11 +514,20 @@ function showResponse(message) {
   setTimeout(() => actionResponse.classList.remove("visible"), 2500);
 }
 
-async function refreshLeads(query) {
+function getListingTypeFilter() {
+  const el = document.getElementById("listing-type-filter");
+  return el ? (el.value || "") : "";
+}
+
+async function refreshLeads(query, listingTypeFilter) {
+  const filter = listingTypeFilter !== undefined ? listingTypeFilter : getListingTypeFilter();
   const url = new URL("/api/leads", window.location.origin);
   url.searchParams.set("limit", "200");
   if (query) {
     url.searchParams.set("q", query);
+  }
+  if (filter) {
+    url.searchParams.set("listing_type", filter);
   }
   try {
     const res = await fetch(url.toString());
@@ -533,15 +542,20 @@ function renderLeads(leads) {
   leadsBody.innerHTML = "";
   for (const lead of leads) {
     const row = document.createElement("tr");
+    const type = (lead.listingType || "").toLowerCase();
+    const typeLabel = type === "rent" ? "Rent" : type === "buy" ? "Buy" : (lead.listingType || "—");
     row.innerHTML = `
       <td><input class="lead-select" type="checkbox" value="${lead.id}" /></td>
       <td>${lead.id}</td>
-      <td><a href="${lead.url}" target="_blank" rel="noopener">${lead.title}</a></td>
-      <td>${lead.price}</td>
-      <td>${lead.location}</td>
+      <td><a href="${lead.url}" target="_blank" rel="noopener">${truncate(lead.title, 40)}</a></td>
+      <td>${typeLabel}</td>
+      <td>${lead.price || "—"}</td>
+      <td>${lead.bedrooms || "—"}</td>
+      <td>${lead.size || "—"}</td>
+      <td>${lead.location || "—"}</td>
       <td>${lead.status}</td>
-      <td>${lead.contactEmail}</td>
-      <td>${lead.contactPhone}</td>
+      <td>${lead.contactEmail || "—"}</td>
+      <td>${lead.contactPhone || "—"}</td>
       <td>${lead.scanTime}</td>
     `;
     leadsBody.appendChild(row);
@@ -972,6 +986,15 @@ fetchStage1Config();
 setInterval(fetchStatus, 2000);
 setInterval(fetchLogs, 1000);
 setInterval(() => refreshLeads(lastQuery), 5000);
+
+const listingTypeFilterEl = document.getElementById("listing-type-filter");
+const btnApplyListingFilter = document.getElementById("btn-apply-listing-filter");
+if (listingTypeFilterEl) {
+  listingTypeFilterEl.addEventListener("change", () => refreshLeads(lastQuery));
+}
+if (btnApplyListingFilter) {
+  btnApplyListingFilter.addEventListener("click", () => refreshLeads(lastQuery));
+}
 setInterval(() => refreshComms(lastCommQuery), 7000);
 setInterval(() => refreshFbQueue(), 6000);
 setInterval(() => refreshClients(lastClientQuery), 8000);

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-Real Facebook Marketplace/Groups feed analyzer.
-Uses Playwright to open FB URLs, scroll the feed, extract listing links,
-and append them to the Java UI fb_queue.csv (id,url,status,saved_at).
+Real Facebook feed analyzer (no simulation).
+- Playwright: real browser, real navigation, optional storage_state for logged-in session.
+- Opens Marketplace/Group URL(s), waits for feed selector (15s), scrolls, extracts
+  listing links via data_scraper.extract_listings with FB selector.
+- Appends new listing URLs to fb_queue.csv. Skips URL on load failure and continues.
 """
 import argparse
 import csv
@@ -134,10 +136,20 @@ def main() -> int:
         context = browser.new_context(**opts)
         page = context.new_page()
 
+        page.set_default_timeout(60_000)
         all_listings = []
         for url in urls:
             print(f"Opening {url}", flush=True)
-            scroll_and_navigate(page, url, scroll_depth, delay_min, delay_max)
+            try:
+                scroll_and_navigate(page, url, scroll_depth, delay_min, delay_max, timeout_ms=60_000)
+            except Exception as e:
+                print(f"Failed to load {url}: {e}", flush=True)
+                random_delay(2, 5)
+                continue
+            try:
+                page.wait_for_selector(selector, timeout=15_000)
+            except Exception:
+                pass
             listings = extract_listings(page, selector, site="facebook")
             for lst in listings:
                 u = (lst.get("url") or "").strip()
