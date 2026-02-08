@@ -529,6 +529,13 @@ async function refreshLeads(query, listingTypeFilter) {
   if (filter) {
     url.searchParams.set("listing_type", filter);
   }
+  const roomsMinEl = document.getElementById("rooms-min");
+  if (roomsMinEl && roomsMinEl.value.trim() !== "") {
+    const r = parseInt(roomsMinEl.value.trim(), 10);
+    if (!isNaN(r) && r >= 0) {
+      url.searchParams.set("rooms_min", String(r));
+    }
+  }
   try {
     const res = await fetch(url.toString());
     const data = await res.json();
@@ -994,6 +1001,15 @@ if (listingTypeFilterEl) {
 }
 if (btnApplyListingFilter) {
   btnApplyListingFilter.addEventListener("click", () => refreshLeads(lastQuery));
+}
+const websiteListingTypeEl = document.getElementById("website-listing-type");
+if (websiteListingTypeEl) {
+  websiteListingTypeEl.addEventListener("change", () => {
+    if (listingTypeFilterEl) {
+      listingTypeFilterEl.value = websiteListingTypeEl.value || "";
+    }
+    refreshLeads(lastQuery);
+  });
 }
 setInterval(() => refreshComms(lastCommQuery), 7000);
 setInterval(() => refreshFbQueue(), 6000);

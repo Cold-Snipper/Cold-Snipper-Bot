@@ -233,6 +233,13 @@ public class Main {
         String q = query.getOrDefault("q", "").toLowerCase();
         String status = query.getOrDefault("status", "").toLowerCase();
         String listingTypeFilter = query.getOrDefault("listing_type", "").toLowerCase();
+        int roomsMin = -1;
+        if (query.containsKey("rooms_min") && !query.get("rooms_min").isEmpty()) {
+            try {
+                roomsMin = Integer.parseInt(query.get("rooms_min").trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
 
         List<Lead> filtered = new ArrayList<>();
         for (Lead lead : LEADS) {
@@ -241,6 +248,18 @@ public class Main {
             }
             if (!listingTypeFilter.isEmpty() && !lead.listingType.toLowerCase().equals(listingTypeFilter)) {
                 continue;
+            }
+            if (roomsMin >= 0) {
+                int leadRooms = 0;
+                if (lead.bedrooms != null && !lead.bedrooms.isEmpty()) {
+                    try {
+                        leadRooms = Integer.parseInt(lead.bedrooms.trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                if (leadRooms < roomsMin) {
+                    continue;
+                }
             }
             if (!q.isEmpty() && !lead.matches(q)) {
                 continue;

@@ -1,4 +1,10 @@
 {
+  "defaultListingTypes": [
+    { "value": "", "label": "All / Browse", "path": "" },
+    { "value": "apartment", "label": "Apartment", "path": "/apartment" },
+    { "value": "house", "label": "House", "path": "/house" },
+    { "value": "land", "label": "Land", "path": "/land" }
+  ],
   "countries": [
     "Austria",
     "Belgium",
@@ -166,7 +172,7 @@
       { "id": "oberhaus_lt", "label": "Ober-Haus", "baseUrl": "https://www.ober-haus.lt/" }
     ],
     "Luxembourg": [
-      { "id": "athome", "label": "atHome.lu", "baseUrl": "https://www.athome.lu/" },
+      { "id": "athome", "label": "atHome.lu", "baseUrl": "https://www.athome.lu/", "listingTypes": [{"value":"","label":"All / Browse","path":""},{"value":"apartment","label":"Apartment","path":"/en/apartment"},{"value":"house","label":"House","path":"/en/house"},{"value":"land","label":"Land","path":"/en/land"}] },
       { "id": "immotop", "label": "Immotop", "baseUrl": "https://www.immotop.lu/" },
       { "id": "wortimmo", "label": "Wortimmo", "baseUrl": "https://www.wortimmo.lu/" },
       { "id": "luximmo", "label": "Luximmo", "baseUrl": "https://www.luximmo.lu/" },
