@@ -123,8 +123,10 @@ def main() -> int:
                 page.goto(url, wait_until="domcontentloaded")
                 ok = attempt_form_submit(page, args.message)
                 row["status"] = "contacted" if ok else "failed"
-            except Exception:
+                print(f"{row['status']}: {url[:80]}{'...' if len(url) > 80 else ''}", flush=True)
+            except Exception as e:
                 row["status"] = "failed"
+                print(f"failed: {url[:80]}... ({e})", flush=True)
             time.sleep(args.delay)
         context.close()
         browser.close()

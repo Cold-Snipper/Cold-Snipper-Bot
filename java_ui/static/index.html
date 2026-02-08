@@ -90,11 +90,8 @@
           <div class="settings-stack">
             <div class="settings-group">
               <div class="settings-title">Targets</div>
+              <p class="hint-text"><strong>Start Scan</strong> and <strong>Test Single Page</strong> run a real browser (Playwright): they open your start URL(s), scroll the page, and extract listing links/cards using the Listing Selector. New leads are appended to the table below. <strong>Send via Website Forms</strong> visits each pending lead URL and submits the message in the first contact form found. Refresh leads after each run.</p>
               <div class="form-grid">
-                <label>
-                  Start URLs
-                  <textarea id="start-urls" rows="3">https://www.athome.lu/en/apartment</textarea>
-                </label>
                 <label>
                   Country (EU)
                   <select id="country">
@@ -104,8 +101,18 @@
                 <label>
                   Target Site
                   <select id="target-site">
-                    <option value="">Loading target sites...</option>
+                    <option value="">Select target site</option>
                   </select>
+                </label>
+                <label>
+                  Listing type
+                  <select id="listing-type">
+                    <option value="">—</option>
+                  </select>
+                </label>
+                <label>
+                  Start URLs <span class="label-optional">(built from above)</span>
+                  <textarea id="start-urls" rows="3" placeholder="Select country, site and listing type to build URLs"></textarea>
                 </label>
               </div>
             </div>
@@ -173,18 +180,38 @@
 
         <section class="mode-panel" id="facebook-scan-setup">
           <div class="mode-header">
-            <h2>Facebook Marketplace Setup</h2>
-            <span class="mode-pill">Analyze → Save URLs → Contact Later</span>
+            <h2>Facebook scan</h2>
+            <span class="mode-pill">Marketplace or Groups → Analyze → Contact</span>
           </div>
           <div class="settings-stack">
             <div class="settings-group">
-              <div class="settings-title">Targets</div>
+              <div class="settings-title">Source</div>
               <div class="form-grid">
+                <label>
+                  Type
+                  <select id="fb-source-type">
+                    <option value="marketplace">Marketplace</option>
+                    <option value="groups">Groups</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="settings-group fb-marketplace-only">
+              <div class="settings-title">Marketplace – Location</div>
+              <div class="form-grid">
+                <label>
+                  City
+                  <input id="fb-city" type="text" placeholder="e.g. miami" value="miami" />
+                </label>
+                <label>
+                  Radius (km)
+                  <input id="fb-radius" type="text" placeholder="25" value="25" />
+                </label>
                 <label>
                   Main Category
                   <select id="fb-category">
                     <option value="">Select category</option>
-                    <option value="property">Property for Sale</option>
+                    <option value="property" selected>Property for Sale</option>
                     <option value="rentals">Property for Rent</option>
                     <option value="rooms">Rooms for Rent</option>
                     <option value="commercial">Commercial</option>
@@ -192,20 +219,28 @@
                   </select>
                 </label>
                 <label>
-                  FB Search URL
-                  <input id="fb-search-url" type="text" value="https://www.facebook.com/marketplace/miami/propertyforsale" />
+                  Keywords
+                  <input id="fb-keywords" type="text" placeholder="FSBO, owner, no agent" />
                 </label>
+              </div>
+              <div class="form-grid">
                 <label>
-                  Logged-in User
-                  <select id="fb-logged-in">
-                    <option value="true">Yes (use logged-in session)</option>
-                    <option value="false">No</option>
-                  </select>
+                  FB Search URL <span class="hint">(built from city + radius)</span>
+                  <input id="fb-search-url" type="text" value="https://www.facebook.com/marketplace/miami/propertyforsale" />
                 </label>
               </div>
             </div>
-            <div class="settings-group">
-              <div class="settings-title">Preferences</div>
+            <div class="settings-group fb-groups-only" style="display:none;">
+              <div class="settings-title">Groups – URLs</div>
+              <div class="form-grid">
+                <label>
+                  Group URLs (one per line)
+                  <textarea id="fb-group-urls" rows="4" placeholder="https://www.facebook.com/groups/..."></textarea>
+                </label>
+              </div>
+            </div>
+            <div class="settings-group fb-marketplace-only">
+              <div class="settings-title">Marketplace – Filters</div>
               <div class="form-grid">
                 <label>
                   Property Type
@@ -249,10 +284,6 @@
                   <input id="fb-posted-within" type="text" placeholder="7" />
                 </label>
                 <label>
-                  Location Radius (km)
-                  <input id="fb-radius" type="text" placeholder="25" />
-                </label>
-                <label>
                   Language
                   <select id="fb-language">
                     <option value="">Any</option>
@@ -265,10 +296,6 @@
                     <option value="nl">Dutch</option>
                   </select>
                 </label>
-                <label>
-                  Keywords
-                  <input id="fb-keywords" type="text" placeholder="FSBO, owner, no agent" />
-                </label>
                 <label class="checkbox">
                   <input id="fb-fsbo-only" type="checkbox" />
                   FSBO Only
@@ -276,7 +303,20 @@
               </div>
             </div>
             <div class="settings-group">
+              <div class="settings-title">Session</div>
+              <div class="form-grid">
+                <label>
+                  Logged-in User
+                  <select id="fb-logged-in">
+                    <option value="true">Yes (use logged-in session)</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="settings-group">
               <div class="settings-title">Actions</div>
+              <p class="hint-text"><strong>Analyze Feed</strong> opens a real browser (Playwright), loads the Marketplace or Group URL(s), scrolls the feed, and appends listing links to the queue below. Use Marketplace (city + keywords) or Groups (one URL per line). Refresh the queue table after the scan finishes. <strong>Save URLs</strong> is for adding mock URLs only.</p>
               <div class="buttons">
                 <button data-action="fb_analyze">Analyze Feed</button>
                 <button data-action="fb_save_urls">Save URLs</button>

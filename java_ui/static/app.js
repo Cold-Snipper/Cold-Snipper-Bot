@@ -186,6 +186,15 @@ function populateSelect(selectId, options, placeholder) {
   }
 }
 
+function getCurrentWebsiteSite() {
+  if (!targetsData) return null;
+  const country = readValue("country");
+  const siteId = readValue("target-site");
+  if (!country || !siteId) return null;
+  const sites = targetsData.sitesByCountry?.[country] || [];
+  return sites.find((s) => s.id === siteId) || null;
+}
+
 function updateSitesForCountry(countryName) {
   if (!targetsData) return;
   const sites = targetsData.sitesByCountry?.[countryName] || [];
@@ -194,6 +203,33 @@ function updateSitesForCountry(countryName) {
     label: site.label,
   }));
   populateSelect("target-site", siteOptions, "Select target site");
+  const targetSiteEl = document.getElementById("target-site");
+  if (targetSiteEl) targetSiteEl.value = "";
+  updateListingTypesForSite();
+  buildWebsiteStartUrl();
+}
+
+function updateListingTypesForSite() {
+  const site = getCurrentWebsiteSite();
+  const types = site?.listingTypes || targetsData?.defaultListingTypes || [];
+  const options = types.map((t) => ({ value: t.path, label: t.label }));
+  populateSelect("listing-type", options, "—");
+  buildWebsiteStartUrl();
+}
+
+function buildWebsiteStartUrl() {
+  const site = getCurrentWebsiteSite();
+  const path = readValue("listing-type");
+  const ta = document.getElementById("start-urls");
+  if (!ta) return;
+  if (!site?.baseUrl) {
+    ta.placeholder = "Select country, site and listing type to build URLs";
+    return;
+  }
+  const base = site.baseUrl.replace(/\/$/, "");
+  const url = path ? base + path : base;
+  ta.value = url;
+  ta.placeholder = "";
 }
 
 async function loadTargets() {
@@ -210,6 +246,7 @@ async function loadTargets() {
     console.warn("Failed to load targets list", err);
     populateSelect("country", [], "Select EU country");
     populateSelect("target-site", [], "Select target site");
+    populateSelect("listing-type", [], "—");
   }
 }
 
@@ -237,6 +274,7 @@ function buildPayload(name) {
         target_site: readValue("target-site"),
         max_price: readValue("max-price"),
         listing_selector: readValue("listing-selector"),
+        site_headless: readChecked("site-headless"),
       };
     case "test_single_page":
       return {
@@ -247,13 +285,31 @@ function buildPayload(name) {
         country: readValue("country"),
         target_site: readValue("target-site"),
         max_price: readValue("max-price"),
+        listing_selector: readValue("listing-selector"),
+        site_headless: readChecked("site-headless"),
       };
     case "fb_analyze":
-    case "fb_save_urls":
+    case "fb_save_urls": {
+      const sourceType = readValue("fb-source-type");
+      let fbSearchUrl = readValue("fb-search-url");
+      if (sourceType === "marketplace") {
+        const city = (readValue("fb-city") || "miami").trim().toLowerCase().replace(/\s+/g, "");
+        const radius = readValue("fb-radius") || "25";
+        fbSearchUrl = "https://www.facebook.com/marketplace/" + city + "/propertyforsale";
+        const kw = readValue("fb-keywords");
+        const params = [];
+        if (kw) params.push("query=" + encodeURIComponent(kw));
+        if (radius) params.push("radius=" + radius);
+        if (params.length) fbSearchUrl += "?" + params.join("&");
+      }
       return compactPayload({
-        fb_search_url: readValue("fb-search-url"),
+        fb_search_url: fbSearchUrl,
+        fb_source_type: sourceType,
+        fb_group_urls: sourceType === "groups" ? readValue("fb-group-urls") : "",
         fb_logged_in: readValue("fb-logged-in"),
         fb_category: readValue("fb-category"),
+        fb_city: readValue("fb-city"),
+        fb_radius: readValue("fb-radius"),
         fb_property_type: readValue("fb-property-type"),
         fb_min_price: readValue("fb-min-price"),
         fb_max_price: readValue("fb-max-price"),
@@ -262,11 +318,11 @@ function buildPayload(name) {
         fb_size_min: readValue("fb-size-min"),
         fb_size_max: readValue("fb-size-max"),
         fb_posted_within: readValue("fb-posted-within"),
-        fb_radius: readValue("fb-radius"),
         fb_language: readValue("fb-language"),
         fb_keywords: readValue("fb-keywords"),
         fb_fsbo_only: readChecked("fb-fsbo-only"),
       });
+    }
     case "fb_mark_contacted":
       return {
         ids: selectedFbIds().join(","),
@@ -803,6 +859,18 @@ if (countrySelect) {
   });
 }
 
+if (targetSiteSelect) {
+  targetSiteSelect.addEventListener("change", () => {
+    updateListingTypesForSite();
+    buildWebsiteStartUrl();
+  });
+}
+
+const listingTypeSelectEl = document.getElementById("listing-type");
+if (listingTypeSelectEl) {
+  listingTypeSelectEl.addEventListener("change", buildWebsiteStartUrl);
+}
+
 crmTabButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     crmTabButtons.forEach((b) => b.classList.remove("active"));
@@ -823,6 +891,43 @@ scanModeInputs.forEach((input) => {
   input.addEventListener("change", updateScanModeUI);
 });
 
+function updateFbSourceUI() {
+  const sourceType = document.getElementById("fb-source-type").value;
+  document.querySelectorAll(".fb-marketplace-only").forEach((el) => {
+    el.style.display = sourceType === "marketplace" ? "" : "none";
+  });
+  document.querySelectorAll(".fb-groups-only").forEach((el) => {
+    el.style.display = sourceType === "groups" ? "" : "none";
+  });
+}
+
+function buildFbSearchUrl() {
+  const sourceType = document.getElementById("fb-source-type").value;
+  if (sourceType !== "marketplace") return;
+  const city = (readValue("fb-city") || "miami").trim().toLowerCase().replace(/\s+/g, "");
+  const radius = readValue("fb-radius") || "25";
+  let url = "https://www.facebook.com/marketplace/" + city + "/propertyforsale";
+  const kw = readValue("fb-keywords");
+  const params = [];
+  if (kw) params.push("query=" + encodeURIComponent(kw));
+  if (radius) params.push("radius=" + radius);
+  if (params.length) url += "?" + params.join("&");
+  const input = document.getElementById("fb-search-url");
+  if (input) input.value = url;
+}
+
+const fbSourceType = document.getElementById("fb-source-type");
+if (fbSourceType) {
+  fbSourceType.addEventListener("change", updateFbSourceUI);
+}
+["fb-city", "fb-radius", "fb-keywords"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener("input", buildFbSearchUrl);
+    el.addEventListener("change", buildFbSearchUrl);
+  }
+});
+
 fetchStatus();
 fetchLogs();
 refreshLeads("");
@@ -831,6 +936,8 @@ refreshFbQueue();
 refreshClients("");
 loadTargets();
 updateScanModeUI();
+updateFbSourceUI();
+buildFbSearchUrl();
 fetchStage1Config();
 setInterval(fetchStatus, 2000);
 setInterval(fetchLogs, 1000);

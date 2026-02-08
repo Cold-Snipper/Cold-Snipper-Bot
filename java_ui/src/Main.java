@@ -439,8 +439,8 @@ public class Main {
                 log("Scan started (site=" + params.getOrDefault("target_site", "n/a")
                         + ", country=" + params.getOrDefault("country", "n/a")
                         + ", urls=" + params.getOrDefault("start_urls", "n/a") + ")");
-                BACKGROUND.submit(() -> simulateScan(params, 6));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Scan started\"}");
+                BACKGROUND.submit(() -> runRealSiteScan(params, false));
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Website scan started (browser will open; refresh leads when done)\"}");
                 break;
             case "pause_scan":
                 scanState = "paused";
@@ -456,8 +456,8 @@ public class Main {
                 log("Single page test scan queued (site=" + params.getOrDefault("target_site", "n/a")
                         + ", country=" + params.getOrDefault("country", "n/a")
                         + ", url=" + params.getOrDefault("single_url", "n/a") + ")");
-                BACKGROUND.submit(() -> simulateScan(params, 3));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Single page scan queued\"}");
+                BACKGROUND.submit(() -> runRealSiteScan(params, true));
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Single page scan started (browser will open; refresh leads when done)\"}");
                 break;
             case "preview_results":
                 log("Preview requested");
@@ -529,8 +529,8 @@ public class Main {
             case "fb_analyze":
                 log("FB analyze requested (url=" + params.getOrDefault("fb_search_url", "n/a")
                         + ", logged_in=" + params.getOrDefault("fb_logged_in", "false") + ")");
-                BACKGROUND.submit(() -> simulateFbAnalyze(params, 5));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"FB analysis queued\"}");
+                BACKGROUND.submit(() -> runRealFbAnalyze(params));
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"FB analysis started (browser will open; refresh queue when done)\"}");
                 break;
             case "fb_save_urls":
                 int saved = saveFbUrls(params, 6);
@@ -622,27 +622,156 @@ public class Main {
         log("Action " + name + " finished");
     }
 
-    private static void simulateScan(Map<String, String> params, int count) {
-        lastScanAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
-        log("Scan running (criteria=" + params.getOrDefault("criteria", "n/a") + ")");
-        for (int i = 0; i < count; i++) {
-            Lead lead = Lead.mock(params);
-            if (lead == null) {
-                continue;
+    private static void runRealSiteScan(Map<String, String> params, boolean singlePageOnly) {
+        List<String> urls = new ArrayList<>();
+        if (singlePageOnly) {
+            String one = params.getOrDefault("single_url", "").trim();
+            if (!one.isEmpty()) {
+                urls.add(one);
             }
-            addLead(lead);
-            sleep(350);
+        } else {
+            String startUrls = params.getOrDefault("start_urls", "");
+            for (String line : startUrls.split("\n")) {
+                String u = line.trim();
+                if (!u.isEmpty()) {
+                    urls.add(u);
+                }
+            }
         }
-        log("Scan finished, leads stored: " + count);
+        if (urls.isEmpty()) {
+            log("Website scan skipped: no URLs (set Start URLs or Single Page URL)");
+            return;
+        }
+        Path script = Paths.get("..", "cold_bot", "site_scraper.py").toAbsolutePath().normalize();
+        if (!Files.exists(script)) {
+            log("Website scan failed: script not found at " + script);
+            return;
+        }
+        Path leadsPath = dataDir.resolve("leads.csv");
+        List<String> command = new ArrayList<>();
+        command.add("python3");
+        command.add(script.toString());
+        command.add("--leads-path");
+        command.add(leadsPath.toString());
+        for (String url : urls) {
+            command.add("--url");
+            command.add(url);
+        }
+        String selector = params.getOrDefault("listing_selector", "").trim();
+        if (!selector.isEmpty()) {
+            command.add("--listing-selector");
+            command.add(selector);
+        }
+        if ("true".equalsIgnoreCase(params.getOrDefault("site_headless", "false"))) {
+            command.add("--headless");
+        }
+        lastScanAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+        log("Website scan running (browser may open)...");
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("Site scan: " + line);
+                }
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                synchronized (LEADS) {
+                    LEADS.clear();
+                    try {
+                        loadLeads();
+                    } catch (IOException e) {
+                        log("Leads reload failed: " + e.getMessage());
+                    }
+                }
+                log("Website scan finished; leads updated.");
+            } else {
+                log("Website scan finished with exit code " + exitCode);
+            }
+        } catch (Exception e) {
+            log("Website scan failed: " + e.getMessage());
+        }
     }
 
-    private static void simulateFbAnalyze(Map<String, String> params, int count) {
-        log("FB analysis running...");
-        for (int i = 0; i < count; i++) {
-            sleep(200);
-            log("Analyzed listing " + (i + 1));
+    private static void runRealFbAnalyze(Map<String, String> params) {
+        List<String> urls = new ArrayList<>();
+        String sourceType = params.getOrDefault("fb_source_type", "marketplace");
+        if ("groups".equalsIgnoreCase(sourceType)) {
+            String groupUrls = params.getOrDefault("fb_group_urls", "");
+            for (String line : groupUrls.split("\n")) {
+                String u = line.trim();
+                if (!u.isEmpty()) {
+                    urls.add(u);
+                }
+            }
         }
-        log("FB analysis finished (ready to save URLs)");
+        if (urls.isEmpty()) {
+            String one = params.getOrDefault("fb_search_url", "").trim();
+            if (!one.isEmpty()) {
+                urls.add(one);
+            }
+        }
+        if (urls.isEmpty()) {
+            log("FB analyze skipped: no URLs (set city/keywords for Marketplace or group URLs for Groups)");
+            return;
+        }
+        Path script = Paths.get("..", "cold_bot", "fb_feed_analyzer.py").toAbsolutePath().normalize();
+        if (!Files.exists(script)) {
+            log("FB analyze failed: script not found at " + script);
+            return;
+        }
+        Path queuePath = dataDir.resolve("fb_queue.csv");
+        List<String> command = new ArrayList<>();
+        command.add("python3");
+        command.add(script.toString());
+        command.add("--queue-path");
+        command.add(queuePath.toString());
+        for (String url : urls) {
+            command.add("--url");
+            command.add(url);
+        }
+        if ("true".equalsIgnoreCase(params.getOrDefault("fb_headless", "false"))) {
+            command.add("--headless");
+        }
+        String storageState = params.getOrDefault("fb_storage_state", "").trim();
+        if (!storageState.isEmpty()) {
+            Path statePath = Paths.get(storageState).toAbsolutePath().normalize();
+            if (Files.exists(statePath)) {
+                command.add("--storage-state");
+                command.add(statePath.toString());
+            }
+        }
+        log("FB analysis running (browser may open)...");
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("FB analyze: " + line);
+                }
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                synchronized (FB_QUEUE) {
+                    FB_QUEUE.clear();
+                    try {
+                        loadFbQueue();
+                    } catch (IOException e) {
+                        log("FB queue reload failed: " + e.getMessage());
+                    }
+                }
+                log("FB analysis finished; queue updated.");
+            } else {
+                log("FB analysis finished with exit code " + exitCode);
+            }
+        } catch (Exception e) {
+            log("FB analyze failed: " + e.getMessage());
+        }
     }
 
     private static void runFbMessenger(Map<String, String> params) {
@@ -717,6 +846,16 @@ public class Main {
                 }
             }
             int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                synchronized (LEADS) {
+                    LEADS.clear();
+                    try {
+                        loadLeads();
+                    } catch (IOException e) {
+                        log("Leads reload failed: " + e.getMessage());
+                    }
+                }
+            }
             log("Website send finished (exit=" + exitCode + ")");
         } catch (Exception e) {
             log("Website send failed: " + e.getMessage());
