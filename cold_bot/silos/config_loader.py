@@ -50,4 +50,6 @@ class ConfigLoader:
         limits.setdefault("cooldown_min", 1800)
         limits.setdefault("cooldown_max", 3600)
         limits.setdefault("max_contacts_per_hour", 5)
+        limits.setdefault("requests_per_minute", 30)
+        limits.setdefault("parallel_urls", 1)
         limits.setdefault("cycle_cooldown_seconds", 300)

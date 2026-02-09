@@ -209,3 +209,39 @@ def is_airbnb_viable(
         model = "llama3"
     prompt = load_prompt("airbnb_viability.txt").format(text=text, criteria=criteria)
     return _call_json_with_retry(prompt, model, provider)
+
+
+def extract_listing_structured(
+    text: str,
+    model: str,
+    provider: str = "ollama",
+) -> Dict:
+    """One-shot LLM extraction: title, price, location, contact, is_private, agency_name, etc.
+    Returns dict with extraction_method='llm' and confidence 0-10.
+    """
+    if not model:
+        model = "llama3"
+    prompt = load_prompt("extract_listing_structured.txt").format(text=text[:8000])
+    raw = _call_json_with_retry(prompt, model, provider)
+    contact = {
+        "email": (raw.get("email") or "").strip() or None,
+        "phone": (raw.get("phone") or "").strip() or None,
+    }
+    if contact["email"] is None and contact["phone"] is None:
+        contact = {"email": "", "phone": ""}
+    else:
+        contact = {"email": contact["email"] or "", "phone": contact["phone"] or ""}
+    return {
+        "title": (raw.get("title") or "").strip(),
+        "price": (raw.get("price") or "").strip(),
+        "location": (raw.get("location") or "").strip(),
+        "description": (raw.get("description") or "").strip()[:500],
+        "contact": contact,
+        "is_private": bool(raw.get("is_private", False)),
+        "agency_name": (raw.get("agency_name") or "").strip(),
+        "listing_type": (raw.get("listing_type") or "").strip(),
+        "bedrooms": raw.get("bedrooms"),
+        "size": (raw.get("size") or "").strip() or None,
+        "confidence": min(10, max(0, int(raw.get("confidence", 5)))),
+        "extraction_method": "llm",
+    }

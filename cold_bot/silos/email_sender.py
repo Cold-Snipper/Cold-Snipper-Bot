@@ -43,6 +43,10 @@ def init_db(db_path: str) -> None:
         conn.execute("ALTER TABLE leads ADD COLUMN listing_url TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        conn.execute("ALTER TABLE leads ADD COLUMN priority_score INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
     conn.commit()
     conn.close()
 
@@ -151,14 +155,17 @@ def upsert_lead(
     rating: int,
     qualification_factors: str,
     status: str = "New",
+    priority_score: Optional[int] = None,
 ) -> None:
     conn = sqlite3.connect(db_path)
+    if priority_score is None:
+        priority_score = 0
     conn.execute(
         """
         INSERT INTO leads (
             title, price, location, contact, listing_url, description, airbnb_viable,
-            viability_reason, rating, qualification_factors, status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            viability_reason, rating, qualification_factors, status, priority_score
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             title,
@@ -172,6 +179,7 @@ def upsert_lead(
             rating,
             qualification_factors,
             status,
+            priority_score,
         ),
     )
     conn.commit()
@@ -183,10 +191,10 @@ def get_viable_leads(db_path: str) -> List[Dict[str, object]]:
     conn.row_factory = sqlite3.Row
     cur = conn.execute(
         """
-        SELECT id, title, price, location, contact, listing_url, viability_reason, rating, status, description, qualification_factors
+        SELECT id, title, price, location, contact, listing_url, viability_reason, rating, status, description, qualification_factors, priority_score
         FROM leads
         WHERE airbnb_viable = 1
-        ORDER BY rating DESC
+        ORDER BY priority_score DESC, rating DESC
         """
     )
     rows = [dict(row) for row in cur.fetchall()]

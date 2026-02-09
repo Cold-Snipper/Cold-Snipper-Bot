@@ -15,6 +15,20 @@ details, and send respectful, personalized partnership proposals — all while k
 ## Usage
 `python main.py --config config.yaml`
 
+- **Health check:** `python main.py --config config.yaml --check` — verifies config, DB, and exits 0/1.
+- **Setup (phase1 + phase2):** `python main.py --config config.yaml --setup` — then run without `--setup` to start the scan loop.
+
+### Supported sources (auto-detected from URL)
+- **atHome** (athome.lu)
+- **Immotop**
+- **Rightmove** (rightmove.co.uk)
+- **Facebook Marketplace / Groups**
+
+### Config options (in `config.yaml`)
+- **limits.parallel_urls** (default `1`, max 3): scrape multiple scraper URLs in parallel, each with its own browser.
+- **limits.requests_per_minute**: per-domain rate limit (default `30`).
+- **target_sites_by_country**: add URLs per country; use `UK` and Rightmove URLs to scrape UK listings.
+
 ## Local Test UI
 For a lightweight localhost UI to test scanning, database controls, and logs,
 see `java_ui/README.md`.

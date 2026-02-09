@@ -32,7 +32,7 @@ class ColdBotGUI:
 
         self.tree = ttk.Treeview(
             self.crm_frame,
-            columns=("ID", "Title", "Price", "Location", "Contact", "URL", "Reason", "Rating", "Status"),
+            columns=("ID", "Title", "Price", "Location", "Contact", "URL", "Reason", "Rating", "Priority", "Status"),
             show="headings",
         )
         for col in self.tree["columns"]:
@@ -73,6 +73,7 @@ class ColdBotGUI:
                     lead.get("listing_url", ""),
                     lead["viability_reason"],
                     lead["rating"],
+                    lead.get("priority_score", 0),
                     lead["status"],
                 ),
             )
@@ -104,7 +105,7 @@ class ColdBotGUI:
             END,
             f"Title: {lead['title']}\nPrice: {lead['price']}\nLocation: {lead['location']}\n"
             f"Contact: {lead['contact']}\nListing URL: {lead.get('listing_url','')}\n"
-            f"Rating: {lead['rating']}\nReason: {lead['viability_reason']}\n"
+            f"Rating: {lead['rating']}\nPriority: {lead.get('priority_score', 0)}\nReason: {lead['viability_reason']}\n"
             f"Factors: {lead['qualification_factors']}\n\nDescription:\n{lead['description']}",
         )
         text.config(state="disabled")

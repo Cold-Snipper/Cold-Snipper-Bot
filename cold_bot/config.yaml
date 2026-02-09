@@ -3,10 +3,13 @@ start_urls:
 
 countries:
   - "US"
+  # - "UK"  # uncomment and add rightmove URLs below to scrape Rightmove
 
 target_sites_by_country:
   US:
     - "https://example.com/us-listings"
+  # UK:
+  #   - "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
 
 criteria: "FSBO, owner selling, no agent, home for sale"
 airbnb_criteria: "Tourist demand, attractions, STR-legal, ADR>150, occupancy>50%, unique amenities"
@@ -30,6 +33,8 @@ message_templates:
 
 limits:
   max_contacts_per_hour: 5
+  parallel_urls: 1
+  requests_per_minute: 30
   scroll_depth: 30
   delay_min: 3
   delay_max: 12

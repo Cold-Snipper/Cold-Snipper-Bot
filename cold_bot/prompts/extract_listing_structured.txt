@@ -1,0 +1,7 @@
+Extract real estate listing fields from the text below. Return strict JSON only with these keys (use empty string or null if unknown):
+title, price, location, description (short snippet max 200 chars), email, phone, is_private (true if private seller/FSBO, false if agent/agency), agency_name (empty if private), listing_type (e.g. house, apartment), bedrooms (number or null), size (e.g. 120 sqm or null), confidence (0-10 how confident you are in the extraction).
+
+Text:
+"""{text}"""
+
+JSON:

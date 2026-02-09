@@ -132,3 +132,25 @@ def extract_agent_details(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
         "reason": "Agent listing",
     }
 
+
+def compute_priority_score(
+    viability_rating: int = 0,
+    is_private: bool = False,
+    has_contact: bool = False,
+    private_confidence: int = 0,
+) -> int:
+    """Unified priority score 0-100 for sort order: Airbnb viability + private seller + contact.
+    Higher = better for outreach order."""
+    score = 0
+    # Viability (e.g. 0-10) -> up to 40 points
+    score += min(40, max(0, int(viability_rating) * 4))
+    # Private seller with decent confidence -> up to 35 points
+    if is_private and private_confidence >= 6:
+        score += 35
+    elif is_private:
+        score += 15
+    # Has contact (email or phone) -> up to 25 points
+    if has_contact:
+        score += 25
+    return min(100, score)
+
