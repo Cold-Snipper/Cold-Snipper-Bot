@@ -1,5 +1,7 @@
 .DS_Store
 .env
+PASTE_GITHUB_TOKEN_HERE.txt
+github_token.txt
 __pycache__/
 *.pyc
 .pytest_cache/

@@ -114,6 +114,21 @@ async function fetchStatus() {
     if (stageCrmStatusEl) {
       stageCrmStatusEl.textContent = (data.clientCount ?? 0) > 0 ? "Populated" : "Empty";
     }
+    // Update pipeline panel status displays
+    const stageConfigDisplay = document.getElementById("stage-config-status-display");
+    const stageScanningDisplay = document.getElementById("stage-scanning-status-display");
+    const stageAnalysisDisplay = document.getElementById("stage-analysis-status-display");
+    const stageContactingDisplay = document.getElementById("stage-contacting-status-display");
+    const stageLoggingDisplay = document.getElementById("stage-logging-status-display");
+    const stageCrmDisplay = document.getElementById("stage-crm-status-display");
+    const stage2LastScan = document.getElementById("stage2-last-scan");
+    if (stageConfigDisplay) stageConfigDisplay.textContent = data.dbCount >= 0 ? "Ready" : "Unknown";
+    if (stageScanningDisplay) stageScanningDisplay.textContent = data.scanState || "Idle";
+    if (stageAnalysisDisplay) stageAnalysisDisplay.textContent = (data.dbCount ?? 0) > 0 ? "Active" : "Idle";
+    if (stageContactingDisplay) stageContactingDisplay.textContent = (data.commCount ?? 0) > 0 ? "Active" : "Idle";
+    if (stageLoggingDisplay) stageLoggingDisplay.textContent = (data.logCount ?? 0) > 0 ? "Writing" : "Idle";
+    if (stageCrmDisplay) stageCrmDisplay.textContent = (data.clientCount ?? 0) > 0 ? "Populated" : "Empty";
+    if (stage2LastScan) stage2LastScan.textContent = data.lastScanAt || "Never";
   } catch (err) {
     console.warn("Status fetch failed", err);
   }
@@ -139,8 +154,28 @@ function appendLogs(logs) {
     div.className = "log-line";
     div.textContent = line;
     logList.appendChild(div);
+    // Also add to pipeline log if it exists
+    const pipelineLogList = document.getElementById("pipeline-log-list");
+    if (pipelineLogList) {
+      const pipelineDiv = document.createElement("div");
+      pipelineDiv.className = "log-line";
+      pipelineDiv.textContent = line;
+      pipelineLogList.appendChild(pipelineDiv);
+      pipelineLogList.scrollTop = pipelineLogList.scrollHeight;
+    }
   }
   logList.scrollTop = logList.scrollHeight;
+}
+
+function addCrmLog(message) {
+  const crmLogList = document.getElementById("crm-log-list");
+  if (crmLogList) {
+    const div = document.createElement("div");
+    div.className = "log-line";
+    div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+    crmLogList.appendChild(div);
+    crmLogList.scrollTop = crmLogList.scrollHeight;
+  }
 }
 
 function readValue(id) {
@@ -485,6 +520,11 @@ async function sendAction(name) {
     }
     if (name === "add_comm") {
       refreshComms(lastCommQuery);
+      addCrmLog("Communication logged");
+    }
+    if (name === "add_client" || name === "update_client") {
+      refreshClients(lastClientQuery);
+      addCrmLog(name === "add_client" ? "Client added" : "Client updated");
     }
     if (name === "search_comms") {
       const q = readValue("comm-search");
@@ -647,6 +687,19 @@ function renderComms(comms) {
 async function refreshClients(query) {
   const url = new URL("/api/clients", window.location.origin);
   url.searchParams.set("limit", "200");
+  if (query) {
+    url.searchParams.set("q", query);
+  }
+  const stage = crmStageFilter ? crmStageFilter.value : "";
+  const source = crmSourceFilter ? crmSourceFilter.value : "";
+  const channel = crmChannelFilter ? crmChannelFilter.value : "";
+  const minScore = crmScoreFilter ? crmScoreFilter.value : "";
+  const autoFilter = crmAutoFilter ? crmAutoFilter.value : "";
+  if (stage) url.searchParams.set("stage", stage);
+  if (source) url.searchParams.set("source_type", source);
+  if (channel) url.searchParams.set("channel", channel);
+  if (minScore) url.searchParams.set("min_score", minScore);
+  if (autoFilter) url.searchParams.set("automation", autoFilter);
   try {
     const res = await fetch(url.toString());
     const data = await res.json();
@@ -658,40 +711,15 @@ async function refreshClients(query) {
 }
 
 function renderCrm() {
-  const filtered = applyCrmFilters(allClients);
-  renderClients(filtered);
-  renderSummary(allClients);
-}
-
-function applyCrmFilters(clients) {
-  const stage = crmStageFilter ? crmStageFilter.value : "";
-  const source = crmSourceFilter ? crmSourceFilter.value : "";
-  const channel = crmChannelFilter ? crmChannelFilter.value : "";
-  const minScore = crmScoreFilter ? parseFloat(crmScoreFilter.value || "0") : 0;
-  const autoFilter = crmAutoFilter ? crmAutoFilter.value : "";
-  const query = readValue("client-search").toLowerCase();
-
-  return clients.filter((client) => {
+  // Server-side filtering is done, only filter by activeCrmTab (UI state)
+  const filtered = allClients.filter((client) => {
     if (activeCrmTab !== "all") {
       if ((client.sourceType || "").toLowerCase() !== activeCrmTab) return false;
     }
-    if (stage && (client.stage || "").toLowerCase() !== stage) return false;
-    if (source && (client.sourceType || "").toLowerCase() !== source) return false;
-    if (channel && (client.outreachChannel || "").toLowerCase() !== channel) return false;
-    if (autoFilter !== "") {
-      const auto = Boolean(client.automationEnabled);
-      if ((autoFilter === "true") !== auto) return false;
-    }
-    if (minScore > 0) {
-      const score = parseFloat(client.viabilityScore || "0");
-      if (score < minScore) return false;
-    }
-    if (query) {
-      const haystack = `${client.name} ${client.email} ${client.phone} ${client.notes}`.toLowerCase();
-      if (!haystack.includes(query)) return false;
-    }
     return true;
   });
+  renderClients(filtered);
+  renderSummary(allClients);
 }
 
 function renderSummary(clients) {
@@ -821,11 +849,33 @@ document.querySelectorAll("button[data-action]").forEach((button) => {
     if (action === "search_clients") {
       const q = readValue("client-search");
       lastClientQuery = q;
-      renderCrm();
+      refreshClients(q);
       return;
     }
     if (action === "refresh_clients") {
       refreshClients(lastClientQuery);
+      addCrmLog("Refresh done");
+      return;
+    }
+    if (action === "export_clients_excel") {
+      window.location.href = "/api/export/clients.xls";
+      addCrmLog("Export clients to Excel");
+      return;
+    }
+    if (action === "go_to_website_bot") {
+      const tab = document.querySelector('.tab[data-tab="scanner"]');
+      if (tab) {
+        tab.click();
+        window.scrollTo(0, 0);
+      }
+      return;
+    }
+    if (action === "go_to_client_comms") {
+      const tab = document.querySelector('.tab[data-tab="client-communications"]');
+      if (tab) {
+        tab.click();
+        window.scrollTo(0, 0);
+      }
       return;
     }
     sendAction(action);
@@ -916,7 +966,7 @@ crmTabButtons.forEach((btn) => {
 const filterElements = [crmStageFilter, crmSourceFilter, crmChannelFilter, crmScoreFilter, crmAutoFilter];
 filterElements.forEach((el) => {
   if (el) {
-    el.addEventListener("change", renderCrm);
+    el.addEventListener("change", () => refreshClients(lastClientQuery));
   }
 });
 

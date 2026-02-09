@@ -138,6 +138,10 @@ public class Main {
                 handleExportLeadsXls(exchange);
                 return;
             }
+            if ("/api/export/clients.xls".equals(path)) {
+                handleExportClientsXls(exchange);
+                return;
+            }
             sendJson(exchange, 404, "{\"error\":\"Not found\"}");
         }
     }
@@ -374,6 +378,16 @@ public class Main {
         String q = query.getOrDefault("q", "").toLowerCase();
         String status = query.getOrDefault("status", "").toLowerCase();
         String stage = query.getOrDefault("stage", "").toLowerCase();
+        String sourceType = query.getOrDefault("source_type", "").toLowerCase();
+        String channel = query.getOrDefault("channel", "").toLowerCase();
+        double minScore = -1.0;
+        if (query.containsKey("min_score") && !query.get("min_score").isEmpty()) {
+            try {
+                minScore = Double.parseDouble(query.get("min_score").trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        String automationFilter = query.getOrDefault("automation", "").toLowerCase();
 
         List<Client> filtered = new ArrayList<>();
         for (Client client : CLIENTS) {
@@ -382,6 +396,31 @@ public class Main {
             }
             if (!stage.isEmpty() && !client.stage.toLowerCase().equals(stage)) {
                 continue;
+            }
+            if (!sourceType.isEmpty() && !client.sourceType.toLowerCase().equals(sourceType)) {
+                continue;
+            }
+            if (!channel.isEmpty() && !client.outreachChannel.toLowerCase().equals(channel)) {
+                continue;
+            }
+            if (minScore >= 0) {
+                double clientScore = 0.0;
+                if (client.viabilityScore != null && !client.viabilityScore.isEmpty()) {
+                    try {
+                        clientScore = Double.parseDouble(client.viabilityScore.trim());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+                if (clientScore < minScore) {
+                    continue;
+                }
+            }
+            if (!automationFilter.isEmpty()) {
+                boolean clientAuto = Boolean.TRUE.equals(client.automationEnabled);
+                boolean filterAuto = "true".equals(automationFilter);
+                if (clientAuto != filterAuto) {
+                    continue;
+                }
             }
             if (!q.isEmpty() && !client.matches(q)) {
                 continue;
@@ -1440,6 +1479,21 @@ public class Main {
         Headers headers = exchange.getResponseHeaders();
         headers.set("Content-Type", "application/vnd.ms-excel; charset=utf-8");
         headers.set("Content-Disposition", "attachment; filename=\"leads_export.xls\"");
+        exchange.sendResponseHeaders(200, data.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(data);
+        }
+    }
+
+    private static void handleExportClientsXls(HttpExchange exchange) throws IOException {
+        if (!Files.exists(clientsFile)) {
+            sendJson(exchange, 404, "{\"error\":\"No clients file\"}");
+            return;
+        }
+        byte[] data = Files.readAllBytes(clientsFile);
+        Headers headers = exchange.getResponseHeaders();
+        headers.set("Content-Type", "application/vnd.ms-excel; charset=utf-8");
+        headers.set("Content-Disposition", "attachment; filename=\"clients_export.xls\"");
         exchange.sendResponseHeaders(200, data.length);
         try (OutputStream os = exchange.getResponseBody()) {
             os.write(data);

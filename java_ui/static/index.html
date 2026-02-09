@@ -17,7 +17,7 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="scanner">Website Bot</button>
-      <button class="tab" data-tab="client-communications">Client Communciations</button>
+      <button class="tab" data-tab="client-communications">Client Communications</button>
       <button class="tab" data-tab="stages">Stages</button>
     </div>
 
@@ -444,6 +444,19 @@
     </div>
 
     <div class="tab-content" id="tab-client-communications">
+      <section class="panel scan-output-panel">
+        <h2>CRM commands &amp; live output</h2>
+        <p class="hint-text">Refresh and export from here; log communications in the panels below. All data is real.</p>
+        <div class="buttons scan-actions-row">
+          <button class="secondary" data-action="refresh_clients">Refresh Data</button>
+          <button class="primary" data-action="export_clients">Export Summary</button>
+          <button class="primary" data-action="export_clients_excel" id="btn-export-clients-excel">Save Clients to Excel (.xls)</button>
+        </div>
+        <h3 class="data-feed-heading">CRM feed</h3>
+        <p class="hint-text data-feed-hint">Last CRM actions and communication logs. Refresh updates client list; Export downloads current data.</p>
+        <div id="crm-log-list" class="logs scan-output-box"></div>
+      </section>
+
       <section class="panel">
         <h2>CRM Dashboard</h2>
         <div class="summary-grid">
@@ -469,8 +482,6 @@
           </div>
         </div>
         <div class="form-row">
-          <button class="secondary" data-action="refresh_clients">Refresh Data</button>
-          <button class="secondary" data-action="export_clients">Export Summary</button>
           <label class="toggle">
             <input id="crm-global-auto" type="checkbox" />
             Global Auto-Outreach
@@ -718,6 +729,40 @@
     </div>
 
     <div class="tab-content" id="tab-stages">
+      <section class="panel scan-output-panel">
+        <h2>Pipeline status &amp; last actions</h2>
+        <p class="hint-text">Pipeline overview and stage actions. Click stage links below to jump to actions or related tabs.</p>
+        <div class="summary-grid" style="margin-bottom: 12px;">
+          <div class="card">
+            <div class="card-label">Stage 1</div>
+            <div class="card-value" id="stage-config-status-display">Ready</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Stage 2</div>
+            <div class="card-value" id="stage-scanning-status-display">Idle</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Stage 3</div>
+            <div class="card-value" id="stage-analysis-status-display">Idle</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Stage 4</div>
+            <div class="card-value" id="stage-contacting-status-display">Idle</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Stage 5</div>
+            <div class="card-value" id="stage-logging-status-display">Idle</div>
+          </div>
+          <div class="card">
+            <div class="card-label">Stage 6</div>
+            <div class="card-value" id="stage-crm-status-display">Empty</div>
+          </div>
+        </div>
+        <h3 class="data-feed-heading">Pipeline log</h3>
+        <p class="hint-text data-feed-hint">Last stage actions and pipeline events. See individual stages below for details.</p>
+        <div id="pipeline-log-list" class="logs scan-output-box"></div>
+      </section>
+
       <section class="panel">
         <h2>Workflow Stages Overview</h2>
         <p>
@@ -806,6 +851,13 @@
               <li>Scan status and logs visible in this UI</li>
             </ul>
           </div>
+          <div class="settings-group">
+            <div class="settings-title">Run Stage 2</div>
+            <p>Go to <strong>Website Bot</strong> tab to run scans. Last scan: <span id="stage2-last-scan">-</span></p>
+            <div class="buttons">
+              <button class="stage1-btn" data-action="go_to_website_bot">Go to Website Bot</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -835,6 +887,13 @@
               <li>Decision: private vs agent with confidence + reason</li>
               <li>Viability score and qualification factors</li>
             </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">View Stage 3 Results</div>
+            <p>Analysis runs automatically on scan data. View leads in <strong>Website Bot</strong> → Leads Preview.</p>
+            <div class="buttons">
+              <button class="stage1-btn" data-action="go_to_website_bot">View Leads</button>
+            </div>
           </div>
         </div>
       </section>
@@ -866,6 +925,13 @@
               <li>Rate-limited actions to avoid spam/bans</li>
             </ul>
           </div>
+          <div class="settings-group">
+            <div class="settings-title">Run Stage 4</div>
+            <p>Send from <strong>Website Bot</strong> (Send via Website Forms) or Facebook panel.</p>
+            <div class="buttons">
+              <button class="stage1-btn" data-action="go_to_website_bot">Go to Website Bot</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -896,6 +962,13 @@
               <li><code>data/agents.txt</code> and <code>data/agents.xlsx</code> exports</li>
             </ul>
           </div>
+          <div class="settings-group">
+            <div class="settings-title">Export Stage 5 Data</div>
+            <p>Logging is automatic. Export from <strong>Website Bot</strong> → Save to Excel.</p>
+            <div class="buttons">
+              <button class="stage1-btn" data-action="go_to_website_bot">Go to Website Bot</button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -925,6 +998,13 @@
               <li>Client records with stages, notes, and automation flags</li>
               <li>Communication history and exportable summaries</li>
             </ul>
+          </div>
+          <div class="settings-group">
+            <div class="settings-title">Manage Stage 6</div>
+            <p>Manage clients and log communications in the <strong>Client Communications</strong> tab.</p>
+            <div class="buttons">
+              <button class="stage1-btn" data-action="go_to_client_comms">Go to Client Communications</button>
+            </div>
           </div>
         </div>
       </section>

@@ -2,29 +2,31 @@
   box-sizing: border-box;
 }
 
+/* Coding/IDE-style dark theme (VS Code Dark+ inspired) */
 body {
   margin: 0;
-  font-family: "Inter", "Segoe UI", sans-serif;
-  background: #ebe0d8;
-  color: #1a1612;
+  font-family: "Inter", "SF Pro Text", system-ui, sans-serif;
+  background: #1e1e1e;
+  color: #d4d4d4;
   font-weight: 500;
   font-size: 15px;
 }
 
 header {
   padding: 12px 20px 8px;
+  border-bottom: 1px solid #3c3c3c;
 }
 
 header h1 {
   margin: 0 0 4px;
   font-size: 24px;
   font-weight: 700;
-  color: #1a1612;
+  color: #e0e0e0;
 }
 
 header p {
   margin: 0;
-  color: #3d352f;
+  color: #9d9d9d;
   font-size: 14px;
   font-weight: 500;
 }
@@ -37,20 +39,20 @@ header p {
 }
 
 .tab {
-  background: #e2d4ca;
-  color: #352e28;
-  border: 1px solid #c9a89e;
+  background: #2d2d2d;
+  color: #9d9d9d;
+  border: 1px solid #3c3c3c;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
   font-size: 14px;
 }
 
 .tab.active {
-  background: #a52a2a;
+  background: #0e639c;
   color: #fff;
-  border-color: #8b2222;
+  border-color: #1177bb;
 }
 
 .tab-content {
@@ -62,19 +64,19 @@ header p {
 }
 
 .panel {
-  background: #f0e6de;
+  background: #252526;
   margin: 8px 20px;
   padding: 12px 16px;
-  border-radius: 10px;
-  border: 1px solid #d4b8b0;
-  box-shadow: 0 2px 8px rgba(139, 34, 34, 0.08);
+  border-radius: 8px;
+  border: 1px solid #3c3c3c;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .panel h2 {
   margin-top: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #1a1612;
+  color: #e0e0e0;
 }
 
 .summary-grid {
@@ -85,15 +87,15 @@ header p {
 }
 
 .card {
-  background: #f2e8e0;
-  border: 1px solid #d4b8b0;
-  border-radius: 8px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
   padding: 10px;
 }
 
 .card-label {
   font-size: 13px;
-  color: #3d352f;
+  color: #9d9d9d;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -103,7 +105,7 @@ header p {
 .card-value {
   font-size: 20px;
   font-weight: 700;
-  color: #1a1612;
+  color: #9cdcfe;
 }
 
 .crm-tabs {
@@ -113,9 +115,9 @@ header p {
 }
 
 .tab-btn {
-  background: #e2d4ca;
-  color: #352e28;
-  border: 1px solid #c9a89e;
+  background: #2d2d2d;
+  color: #9d9d9d;
+  border: 1px solid #3c3c3c;
   font-weight: 600;
   border-radius: 6px 6px 0 0;
   padding: 6px 10px;
@@ -124,9 +126,10 @@ header p {
 }
 
 .tab-btn.active {
-  background: #f0e6de;
+  background: #252526;
   border-bottom-color: transparent;
-  border-color: #c9a89e;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
 }
 
 .crm-filters {
@@ -150,7 +153,7 @@ header p {
   flex-direction: column;
   gap: 4px;
   font-size: 14px;
-  color: #352e28;
+  color: #9d9d9d;
   font-weight: 500;
 }
 
@@ -172,37 +175,43 @@ header p {
 
 .hint-text {
   font-size: 13px;
-  color: #3d352f;
+  color: #9d9d9d;
   font-weight: 500;
   margin: 0 0 8px;
   line-height: 1.4;
 }
 
 .hint-text code {
-  background: #ddcec4;
+  background: #264f78;
   padding: 1px 4px;
   border-radius: 4px;
   font-size: 12px;
-  color: #1a1612;
+  color: #9cdcfe;
   font-weight: 600;
+  font-family: "SF Mono", Consolas, monospace;
 }
 
 .label-optional {
   font-weight: 500;
-  color: #3d352f;
+  color: #808080;
   font-size: 12px;
 }
 
 input,
 textarea,
 select {
-  background: #fff;
-  border: 1px solid #c9a89e;
-  border-radius: 6px;
-  color: #1a1612;
+  background: #3c3c3c;
+  border: 1px solid #505050;
+  border-radius: 4px;
+  color: #d4d4d4;
   padding: 8px 10px;
   font-size: 14px;
   font-weight: 500;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6d6d6d;
 }
 
 textarea {
@@ -220,8 +229,9 @@ textarea {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: #e2d4ca;
-  border-radius: 8px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
 }
 
 .mode-grid {
@@ -232,17 +242,17 @@ textarea {
 }
 
 .mode-panel {
-  background: #f0e6de;
-  border: 2px solid #d4b8b0;
-  border-radius: 10px;
+  background: #252526;
+  border: 2px solid #3c3c3c;
+  border-radius: 8px;
   padding: 14px 16px;
   min-height: 360px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .mode-panel.active {
-  border-color: #a52a2a;
-  box-shadow: 0 4px 12px rgba(165, 42, 42, 0.15);
+  border-color: #0e639c;
+  box-shadow: 0 0 0 1px #0e639c, 0 4px 12px rgba(14, 99, 156, 0.25);
 }
 
 .mode-panel.inactive {
@@ -272,17 +282,17 @@ textarea {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
-  color: #1a1612;
+  color: #e0e0e0;
 }
 
 .mode-pill {
-  background: rgba(165, 42, 42, 0.2);
-  color: #5c1a1a;
+  background: rgba(14, 99, 156, 0.25);
+  color: #79b8e0;
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid rgba(165, 42, 42, 0.25);
+  border: 1px solid rgba(14, 99, 156, 0.4);
 }
 
 .crm-grid {
@@ -292,9 +302,9 @@ textarea {
 }
 
 .crm-panel {
-  background: #f0e6de;
-  border: 1px solid #d4b8b0;
-  border-radius: 10px;
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
   padding: 12px;
 }
 
@@ -310,7 +320,7 @@ textarea {
   margin: 0;
   font-size: 16px;
   font-weight: 700;
-  color: #1a1612;
+  color: #e0e0e0;
 }
 
 .crm-actions {
@@ -319,9 +329,9 @@ textarea {
 }
 
 .client-card {
-  background: #ebe0d8;
-  border: 1px solid #d4b8b0;
-  border-radius: 8px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
   padding: 10px;
   margin-bottom: 10px;
 }
@@ -331,7 +341,7 @@ textarea {
   justify-content: space-between;
   gap: 8px;
   padding: 4px 0;
-  border-bottom: 1px solid #ddcec4;
+  border-bottom: 1px solid #3c3c3c;
 }
 
 .client-row:last-child {
@@ -339,14 +349,14 @@ textarea {
 }
 
 .client-row span {
-  color: #1a1612;
+  color: #d4d4d4;
   font-size: 14px;
 }
 
 .link-button {
   background: none;
   border: none;
-  color: #a52a2a;
+  color: #569cd6;
   cursor: pointer;
   padding: 0;
   font-weight: 600;
@@ -375,9 +385,9 @@ textarea {
 }
 
 .settings-group {
-  background: #ebe0d8;
-  border: 1px solid #d4b8b0;
-  border-radius: 8px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
   padding: 10px 12px;
 }
 
@@ -385,7 +395,7 @@ textarea {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #1a1612;
+  color: #9d9d9d;
   font-weight: 700;
   margin-bottom: 8px;
 }
@@ -407,7 +417,7 @@ textarea {
   font-size: 13px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #1a1612;
+  color: #9d9d9d;
   font-weight: 700;
   margin-bottom: 4px;
 }
@@ -420,10 +430,10 @@ textarea {
 }
 
 button {
-  background: #a52a2a;
+  background: #0e639c;
   color: #fff;
-  border: none;
-  border-radius: 6px;
+  border: 1px solid #1177bb;
+  border-radius: 4px;
   padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
@@ -432,36 +442,40 @@ button {
 }
 
 button:hover {
-  background: #8b2222;
+  background: #1177bb;
 }
 
 button.secondary {
-  background: #b8a99a;
-  color: #1a1612;
+  background: #3c3c3c;
+  color: #d4d4d4;
+  border-color: #505050;
 }
 
 button.secondary:hover {
-  background: #a89888;
+  background: #505050;
 }
 
 button.danger {
-  background: #8b2222;
+  background: #5a1e1e;
+  border-color: #8b2222;
 }
 
 button.primary {
-  background: #228b22;
+  background: #16825d;
+  border-color: #4ec9b0;
 }
 
 button.primary:hover {
-  background: #1a6b1a;
+  background: #1a9b6e;
 }
 
 .response {
   margin-top: 8px;
   padding: 8px 10px;
-  background: #ddcec4;
-  border-radius: 6px;
-  color: #1a1612;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
+  color: #d4d4d4;
   font-weight: 500;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -486,19 +500,19 @@ th,
 td {
   text-align: left;
   padding: 8px 10px;
-  border-bottom: 1px solid #d4b8b0;
+  border-bottom: 1px solid #3c3c3c;
   font-size: 14px;
-  color: #1a1612;
+  color: #d4d4d4;
   font-weight: 500;
 }
 
 th {
-  color: #1a1612;
+  color: #9d9d9d;
   font-weight: 700;
 }
 
 td a {
-  color: #a52a2a;
+  color: #569cd6;
   text-decoration: none;
   font-weight: 600;
 }
@@ -511,7 +525,7 @@ td a {
   margin: 10px 0 2px;
   font-size: 15px;
   font-weight: 600;
-  color: #1a1612;
+  color: #e0e0e0;
 }
 
 .scan-output-panel .data-feed-hint {
@@ -525,23 +539,37 @@ td a {
 }
 
 .logs {
-  background: #e2d4ca;
-  border: 1px solid #c9a89e;
-  border-radius: 6px;
+  background: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  border-radius: 4px;
   min-height: 180px;
   max-height: 280px;
   overflow-y: auto;
   padding: 8px 10px;
-  font-family: "SFMono-Regular", Consolas, monospace;
-  font-size: 14px;
-  line-height: 1.45;
-  color: #1a1612;
-  font-weight: 600;
+  font-family: "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #d4d4d4;
+  font-weight: 500;
+}
+
+.logs::-webkit-scrollbar {
+  width: 10px;
+}
+.logs::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+.logs::-webkit-scrollbar-thumb {
+  background: #505050;
+  border-radius: 5px;
+}
+.logs::-webkit-scrollbar-thumb:hover {
+  background: #6d6d6d;
 }
 
 .log-line + .log-line {
   margin-top: 4px;
-  border-top: 1px solid #c9a89e;
+  border-top: 1px solid #3c3c3c;
   padding-top: 4px;
 }
 
@@ -554,24 +582,25 @@ td a {
   padding: 12px 0;
 }
 .flow-node {
-  background: #ebe0d8;
-  border: 1px solid #d4b8b0;
-  border-radius: 8px;
+  background: #2d2d2d;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
   padding: 8px 12px;
   text-align: center;
   max-width: 320px;
   font-size: 14px;
-  color: #1a1612;
+  color: #d4d4d4;
 }
 .flow-node code {
-  background: #ddcec4;
+  background: #264f78;
   padding: 2px 6px;
   border-radius: 4px;
-  color: #1a1612;
+  color: #9cdcfe;
   font-size: 13px;
+  font-family: "SF Mono", Consolas, monospace;
 }
 .flow-arrow {
-  color: #3d352f;
+  color: #6a9955;
   font-size: 14px;
 }
 .stage1-test-row {
@@ -580,29 +609,29 @@ td a {
   margin: 8px 0;
 }
 .stage1-btn {
-  background: #a52a2a;
+  background: #0e639c;
   color: #fff;
-  border: none;
-  border-radius: 6px;
+  border: 1px solid #1177bb;
+  border-radius: 4px;
   padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
   font-size: 14px;
 }
 .stage1-btn:hover {
-  background: #8b2222;
+  background: #1177bb;
 }
 .stage1-result {
   margin-top: 6px;
   font-size: 14px;
-  color: #1a1612;
+  color: #d4d4d4;
 }
 .stage1-result .label {
-  color: #1a1612;
+  color: #9d9d9d;
   font-weight: 600;
 }
 .stage1-msg {
   margin-left: 6px;
-  color: #1a6b1a;
+  color: #4ec9b0;
   font-weight: 600;
 }
