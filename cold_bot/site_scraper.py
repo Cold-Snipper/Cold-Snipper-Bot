@@ -198,12 +198,15 @@ def main() -> int:
             try:
                 source = _infer_source_from_url(url)
                 scraper = get_scraper_for_source(config, source)
-                print(f"Scraping {url} with {scraper.site_name} scraper", flush=True)
+                print(f"Scraping {url} with {scraper.site_name} scraper...", flush=True)
                 raw = scraper.scrape(url, dry_run=True, db_path=None, page=None)
+                n = 0
                 for r in raw:
                     lead = _scraper_listing_to_lead(r)
                     if lead.get("url") and not lead["url"].startswith("javascript:"):
                         all_leads.append(lead)
+                        n += 1
+                print(f"  {scraper.site_name}: found {n} listings from this page", flush=True)
             except Exception as e:
                 print(f"Silo scrape failed for {url}: {e}", flush=True)
                 traceback.print_exc()
@@ -275,6 +278,11 @@ def main() -> int:
             next_id += 1
             existing_rows.append(row)
             added += 1
+            # Echo each saved row to console so it appears in the main view
+            title = (row.get("title") or "")[:60]
+            price = row.get("price") or ""
+            loc = (row.get("location") or "")[:40]
+            print(f"SAVED id={row['id']} | {title!r} | {price} | {loc} | {url[:70]}", flush=True)
         write_leads(leads_path, existing_rows)
         print(f"Done. Appended {added} new leads to {leads_path} (total {len(existing_rows)}).", flush=True)
         return 0

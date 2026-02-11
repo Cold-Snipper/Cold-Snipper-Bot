@@ -265,6 +265,93 @@ class AtHomeScraper(Scraper):
     default_selector = ".listing-item"
     site_name = "athome"
 
+    # Cookie/consent: try locator by text first, then CSS selectors
+    _CONSENT_TEXTS = [
+        "Accept all", "Accept", "I accept", "OK", "Allow all", "Agree",
+        "Tout accepter", "Alles akzeptieren", "Accepter", "Accept all cookies",
+    ]
+    _CONSENT_SELECTORS = [
+        "[data-testid='accept-cookies']",
+        ".cookie-consent button",
+        "[class*='cookie'] button",
+        "[class*='consent'] button",
+        "#onetrust-accept-btn-handler",
+        "[id*='accept']",
+    ]
+
+    def accept_consent(self) -> None:
+        """Click cookie/terms accept if present. Call after goto, before scroll."""
+        if not self._page:
+            return
+        # Try by button text (most reliable for "Accept" style buttons)
+        for text in self._CONSENT_TEXTS:
+            try:
+                loc = self._page.locator(f"button:has-text('{text}')").first
+                loc.wait_for(state="visible", timeout=3000)
+                loc.click()
+                _random_delay(1, 2)
+                LOG.info("athome: accepted consent (button text: %s)", text)
+                return
+            except Exception:
+                continue
+        # Fallback: CSS selectors
+        for sel in self._CONSENT_SELECTORS:
+            try:
+                btn = self._page.wait_for_selector(sel, timeout=2000)
+                if btn:
+                    btn.click()
+                    _random_delay(1, 2)
+                    LOG.info("athome: accepted consent with %s", sel)
+                    return
+            except Exception:
+                continue
+
+    def scrape(
+        self,
+        url: str,
+        dry_run: bool = True,
+        db_path: Optional[str] = None,
+        page: Optional[Page] = None,
+    ) -> List[Dict[str, Any]]:
+        """Navigate, accept terms, scroll, collect. Override so we can accept consent before scroll."""
+        if not validate_url(url):
+            LOG.warning("invalid url skipped: %s", url[:80])
+            return []
+        own_browser = page is None
+        try:
+            if page is not None:
+                self._page = page
+            else:
+                self.init_browser()
+            self.goto(url)
+            self.accept_consent()
+            self.scroll()
+            _random_delay(self.delay_min, self.delay_max)
+            elements = self.collect_listings()
+            listings: List[Dict[str, Any]] = []
+            for el in elements:
+                data = self.extract_listing_data(el)
+                text = (data.get("description") or "") + " " + (data.get("title") or "")
+                pa = self._detect_private_agent(text)
+                data["is_private"] = pa["is_private"]
+                data["agency_name"] = pa["agency_name"]
+                data["contact"] = self._extract_contact(text)
+                data["url"] = data.get("url") or url
+                if "source" not in data:
+                    data["source"] = self.site_name
+                listings.append(data)
+            if dry_run:
+                for L in listings:
+                    LOG.info("extract: %s", L)
+                    print(L, flush=True)
+            else:
+                save_to_db(listings, db_path or self.config.get("database", "leads.db"))
+            return listings
+        finally:
+            if own_browser and self._playwright:
+                close_browser(self._playwright, self._browser, self._context)
+                self._playwright = self._browser = self._context = self._page = None
+
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
         out["source"] = self.site_name
