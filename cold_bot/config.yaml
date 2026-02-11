@@ -13,14 +13,26 @@ target_sites_by_country:
     - "https://example.com/us-listings"
   # UK:
   #   - "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+  # LU URLs below are researched from live site navigation (not guessed)
   LU:
     - "https://www.athome.lu/en/buy/"
     - "https://www.athome.lu/en/rent"
-    - "https://www.immotop.lu/en/buy/"
-    - "https://www.nextimmo.lu/en/"
-    - "https://www.bingo.lu/en/"
-    - "https://www.propertyweb.lu/en/"
-    - "https://www.wortimmo.lu/fr/"
+    # Immotop: real listing results page (vente = sale, luxembourg-pays = country)
+    - "https://www.immotop.lu/vente-maisons-appartements/luxembourg-pays/?criterio=rilevanza"
+    - "https://www.immotop.lu/en/vente-maisons-appartements/luxembourg-pays/?criterio=rilevanza"
+    # Nextimmo: real search results (7856+ listings)
+    - "https://nextimmo.lu/en/search/page/1"
+    # Bingo: FR vente = buy; list view (site is map-heavy, may show "Traitement en cours")
+    - "https://www.bingo.lu/fr/vente/"
+    - "https://www.bingo.lu/fr/search/offers?mapViewType=list"
+    # PropertyWeb: real category listing pages
+    - "https://propertyweb.lu/en/to-let/office"
+    - "https://propertyweb.lu/en/for-sale/office"
+    - "https://propertyweb.lu/en/for-sale/residential/apartment"
+    # Wortimmo: real category listing pages (FR)
+    - "https://www.wortimmo.lu/fr/vente"
+    - "https://www.wortimmo.lu/fr/vente/appartement"
+    - "https://www.wortimmo.lu/fr/vente/maison"
 
 criteria: "FSBO, owner selling, no agent, home for sale"
 airbnb_criteria: "Tourist demand, attractions, STR-legal, ADR>150, occupancy>50%, unique amenities"
@@ -46,9 +58,9 @@ limits:
   max_contacts_per_hour: 5
   parallel_urls: 1
   requests_per_minute: 30
-  scroll_depth: 30
-  delay_min: 3
-  delay_max: 12
+  scroll_depth: 3
+  delay_min: 0.4
+  delay_max: 0.9
   cooldown_min: 1800
   cooldown_max: 3600
   cycle_cooldown_seconds: 300

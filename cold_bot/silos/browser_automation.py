@@ -6,12 +6,22 @@ from playwright.sync_api import sync_playwright, Error, Browser, BrowserContext,
 
 from utils import rotate_ua, random_delay
 
-# Research-backed: common cookie consent button texts and selectors (OneTrust, Cookiebot, GDPR banners)
-CONSENT_BUTTON_TEXTS = [
+# Cookie consent: prefer "reject non-essential" / "necessary only" (mandatory cookies only), then fallback to accept to dismiss banner.
+REJECT_OR_NECESSARY_TEXTS = [
+    "Reject non-essential", "Only necessary", "Necessary only", "Essential only", "Strictly necessary",
+    "Tout refuser", "Refuser", "Accepter uniquement les essentiels", "Seulement les essentiels",
+    "Nur notwendige", "Alles ablehnen", "Allow essential only", "Reject all", "Refuse non-essential",
+    "Accept necessary only", "Necessaire uniquement", "Nur erforderliche",
+]
+ACCEPT_TEXTS = [
     "Accept all", "Accept", "I accept", "OK", "Allow all", "Agree", "Accept all cookies",
     "Tout accepter", "Alles akzeptieren", "Accepter", "Accept & continue", "Allow",
 ]
-CONSENT_SELECTORS = [
+REJECT_SELECTORS = [
+    "[id*='reject']", "[class*='reject']", "[data-action='reject']", ".cc-reject", ".cc-deny",
+    "[aria-label*='eject']", "button[class*='necessary']", "a[class*='necessary']",
+]
+ACCEPT_SELECTORS = [
     "#onetrust-accept-btn-handler",
     "[data-testid='accept-cookies']",
     ".cookie-consent button",
@@ -21,6 +31,9 @@ CONSENT_SELECTORS = [
     ".cc-btn.cc-allow",
     "[aria-label*='Accept']",
 ]
+# Legacy names for any external use
+CONSENT_BUTTON_TEXTS = ACCEPT_TEXTS
+CONSENT_SELECTORS = ACCEPT_SELECTORS
 
 # Optional: apply stealth if available (API may vary by version)
 try:
@@ -76,28 +89,94 @@ def init_browser(
         return (p, browser, context, page)
 
 
-def try_accept_consent(page: Page, timeout_per_try_ms: int = 3000) -> bool:
-    """Try to dismiss cookie/consent banner (research: click accept is standard). Returns True if clicked."""
-    if not page:
-        return False
-    for text in CONSENT_BUTTON_TEXTS:
+def _click_consent_by_text(page: Page, texts: list, timeout_ms: int = 600) -> bool:
+    """Click first visible button/link that contains one of the texts. Returns True if clicked."""
+    for text in texts:
         try:
-            loc = page.locator(f"button:has-text('{text}'), a:has-text('{text}')").first
-            loc.wait_for(state="visible", timeout=timeout_per_try_ms)
+            loc = page.locator(f"button:has-text('{text}'), a:has-text('{text}'), [role='button']:has-text('{text}')").first
+            loc.wait_for(state="visible", timeout=timeout_ms)
             loc.click()
-            random_delay(1, 2)
+            time.sleep(0.3)
             return True
         except Exception:
             continue
-    for sel in CONSENT_SELECTORS:
+    return False
+
+
+def _click_consent_by_selectors(page: Page, selectors: list, timeout_ms: int = 500) -> bool:
+    for sel in selectors:
         try:
-            btn = page.wait_for_selector(sel, timeout=2000)
+            btn = page.wait_for_selector(sel, timeout=timeout_ms)
             if btn:
                 btn.click()
-                random_delay(1, 2)
+                time.sleep(0.3)
                 return True
         except Exception:
             continue
+    return False
+
+
+def _click_consent_nuclear(page: Page, timeout_ms: int = 400) -> bool:
+    """Click any button/link with Accept/OK/Accepter/Allow. Last resort."""
+    for word in ["Accept", "OK", "Accepter", "Allow", "Agree", "Tout accepter", "Accept all"]:
+        try:
+            loc = page.locator(f"button:has-text('{word}'), a:has-text('{word}'), [role='button']:has-text('{word}')").first
+            loc.wait_for(state="visible", timeout=timeout_ms)
+            loc.click()
+            time.sleep(0.3)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _try_consent_in_frame(frame, timeout_ms: int) -> bool:
+    """Try consent inside a frame (cookie banners often in iframe). Returns True if clicked."""
+    for text in REJECT_OR_NECESSARY_TEXTS + ACCEPT_TEXTS:
+        try:
+            loc = frame.locator(f"button:has-text('{text}'), a:has-text('{text}')").first
+            loc.wait_for(state="visible", timeout=timeout_ms)
+            loc.click()
+            time.sleep(0.3)
+            return True
+        except Exception:
+            continue
+    for sel in REJECT_SELECTORS + ACCEPT_SELECTORS:
+        try:
+            btn = frame.locator(sel).first
+            btn.wait_for(state="visible", timeout=timeout_ms)
+            btn.click()
+            time.sleep(0.3)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def try_accept_consent(page: Page, timeout_per_try_ms: int = 350) -> bool:
+    """Dismiss cookie banner: prefer reject/necessary, else accept. Short timeouts so we don't hang. Tries iframes."""
+    if not page:
+        return False
+    t = timeout_per_try_ms
+    # 1) Main page: reject then accept (fast cycle)
+    if _click_consent_by_text(page, REJECT_OR_NECESSARY_TEXTS, t):
+        return True
+    if _click_consent_by_selectors(page, REJECT_SELECTORS, t):
+        return True
+    if _click_consent_by_text(page, ACCEPT_TEXTS, t):
+        return True
+    if _click_consent_by_selectors(page, ACCEPT_SELECTORS, t):
+        return True
+    # 2) Cookie banners often in iframe
+    try:
+        for frame in page.frames:
+            if frame != page.main_frame and _try_consent_in_frame(frame, t):
+                return True
+    except Exception:
+        pass
+    # 3) Nuclear: any button with accept/ok/accepter
+    if _click_consent_nuclear(page, t):
+        return True
     return False
 
 
