@@ -30,8 +30,6 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -85,6 +83,7 @@ public class Main {
         loadCommunications();
         loadFbQueue();
         loadClients();
+        log("Data: " + LEADS.size() + " leads, " + FB_QUEUE.size() + " FB queue, " + COMMUNICATIONS.size() + " communications, " + CLIENTS.size() + " clients");
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/api/", new ApiHandler());
@@ -92,44 +91,7 @@ public class Main {
         server.setExecutor(Executors.newCachedThreadPool());
         log("UI server starting on http://localhost:" + port);
         server.start();
-
-        int intervalMinutes = 0;
-        String intervalEnv = System.getenv("SCRAPER_INTERVAL_MINUTES");
-        if (intervalEnv != null && !intervalEnv.isEmpty()) {
-            try {
-                intervalMinutes = Integer.parseInt(intervalEnv.trim());
-            } catch (NumberFormatException ignored) {
-            }
-        }
-        boolean runOnStart = "true".equalsIgnoreCase(System.getenv("SCRAPER_RUN_ON_START"));
-        ScheduledExecutorService scheduler = (intervalMinutes > 0 || runOnStart) ? Executors.newSingleThreadScheduledExecutor() : null;
-        if (scheduler != null) {
-            Runnable runScraper = () -> {
-                if ("running".equals(scanState)) {
-                    log("Scraper skipped: scan already running");
-                    return;
-                }
-                List<String> urls = readIntervalUrls();
-                if (urls.isEmpty()) {
-                    log("Scraper skipped: no URLs in data/interval_urls.txt");
-                    return;
-                }
-                Map<String, String> params = new HashMap<>();
-                params.put("start_urls", String.join("\n", urls));
-                params.put("scan_mode", "website");
-                log("Scraper run (website scan)");
-                runRealSiteScan(params, false);
-            };
-            if (runOnStart) {
-                scheduler.schedule(runScraper, 10, TimeUnit.SECONDS);
-                log("Scraper will run once 10s after start (SCRAPER_RUN_ON_START=true)");
-            }
-            if (intervalMinutes > 0) {
-                long initialDelaySeconds = runOnStart ? (intervalMinutes * 60L) : 10L;
-                scheduler.scheduleAtFixedRate(runScraper, initialDelaySeconds, intervalMinutes * 60L, TimeUnit.SECONDS);
-                log("Scraper interval: every " + intervalMinutes + " min, first run in " + (initialDelaySeconds == 10 ? "10s" : (initialDelaySeconds / 60) + " min"));
-            }
-        }
+        // Scans run only when you click Start Scan (website or FB). No auto-start, no interval.
     }
 
     private static List<String> readIntervalUrls() {
@@ -834,7 +796,11 @@ public class Main {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log("Site scan: " + line);
+                    if (line.startsWith("SAVED")) {
+                        log(line);
+                    } else {
+                        log("Site scan: " + line);
+                    }
                 }
             }
             int exitCode = process.waitFor();
@@ -914,7 +880,11 @@ public class Main {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log("FB analyze: " + line);
+                    if (line.startsWith("SAVED")) {
+                        log(line);
+                    } else {
+                        log("FB analyze: " + line);
+                    }
                 }
             }
             int exitCode = process.waitFor();
@@ -997,7 +967,11 @@ public class Main {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    log("FB scan: " + line);
+                    if (line.startsWith("SAVED")) {
+                        log(line);
+                    } else {
+                        log("FB scan: " + line);
+                    }
                 }
             }
             int exitCode = process.waitFor();
@@ -1262,7 +1236,6 @@ public class Main {
                 NEXT_ID.set(Math.max(NEXT_ID.get(), lead.id + 1));
             }
         }
-        log("Loaded leads from " + leadsFile + " (" + LEADS.size() + ")");
     }
 
     private static void loadCommunications() throws IOException {
@@ -1297,7 +1270,6 @@ public class Main {
                 NEXT_COMM_ID.set(Math.max(NEXT_COMM_ID.get(), comm.id + 1));
             }
         }
-        log("Loaded communications from " + commsFile + " (" + COMMUNICATIONS.size() + ")");
     }
 
     private static void loadFbQueue() throws IOException {
@@ -1325,7 +1297,6 @@ public class Main {
                 NEXT_FB_ID.set(Math.max(NEXT_FB_ID.get(), item.id + 1));
             }
         }
-        log("Loaded FB queue from " + fbQueueFile + " (" + FB_QUEUE.size() + ")");
     }
 
     private static void loadClients() throws IOException {
@@ -1368,7 +1339,6 @@ public class Main {
                 NEXT_CLIENT_ID.set(Math.max(NEXT_CLIENT_ID.get(), client.id + 1));
             }
         }
-        log("Loaded clients from " + clientsFile + " (" + CLIENTS.size() + ")");
     }
 
     private static int parseInt(String value, int fallback) {
