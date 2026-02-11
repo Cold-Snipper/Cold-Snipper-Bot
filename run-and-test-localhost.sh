@@ -4,6 +4,9 @@
 set -e
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_ROOT"
+# Use cold_bot venv so Java-spawned python3 has Playwright and deps
+VENV_PY="$REPO_ROOT/cold_bot/.venv/bin"
+[ -d "$VENV_PY" ] && export PATH="$VENV_PY:$PATH"
 
 PORT="${1:-1111}"
 

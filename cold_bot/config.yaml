@@ -10,6 +10,12 @@ target_sites_by_country:
     - "https://example.com/us-listings"
   # UK:
   #   - "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
+  LU:
+    - "https://www.athome.lu/en/buy/"
+    - "https://www.immotop.lu/en/buy/"
+    - "https://www.nextimmo.lu/en/"
+    - "https://www.bingo.lu/en/"
+    - "https://www.propertyweb.lu/en/"
 
 criteria: "FSBO, owner selling, no agent, home for sale"
 airbnb_criteria: "Tourist demand, attractions, STR-legal, ADR>150, occupancy>50%, unique amenities"
@@ -41,6 +47,12 @@ limits:
   cooldown_min: 1800
   cooldown_max: 3600
   cycle_cooldown_seconds: 300
+  # Facebook-only (anti-detection)
+  fb_requests_per_minute: 10
+  fb_delay_min: 5
+  fb_delay_max: 15
+  fb_max_urls_per_run: 8
+  fb_max_scroll_depth: 20
 
 selectors:
   listing: '[data-testid="marketplace_feed_card"]'
@@ -55,3 +67,5 @@ facebook:
   groups_by_country:
     US:
       - "https://www.facebook.com/groups/example-rentals"
+  # Anti-detection: prefer non-headless for FB
+  headless: false

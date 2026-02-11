@@ -30,6 +30,8 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,6 +92,64 @@ public class Main {
         server.setExecutor(Executors.newCachedThreadPool());
         log("UI server starting on http://localhost:" + port);
         server.start();
+
+        int intervalMinutes = 0;
+        String intervalEnv = System.getenv("SCRAPER_INTERVAL_MINUTES");
+        if (intervalEnv != null && !intervalEnv.isEmpty()) {
+            try {
+                intervalMinutes = Integer.parseInt(intervalEnv.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        boolean runOnStart = "true".equalsIgnoreCase(System.getenv("SCRAPER_RUN_ON_START"));
+        ScheduledExecutorService scheduler = (intervalMinutes > 0 || runOnStart) ? Executors.newSingleThreadScheduledExecutor() : null;
+        if (scheduler != null) {
+            Runnable runScraper = () -> {
+                if ("running".equals(scanState)) {
+                    log("Scraper skipped: scan already running");
+                    return;
+                }
+                List<String> urls = readIntervalUrls();
+                if (urls.isEmpty()) {
+                    log("Scraper skipped: no URLs in data/interval_urls.txt");
+                    return;
+                }
+                Map<String, String> params = new HashMap<>();
+                params.put("start_urls", String.join("\n", urls));
+                params.put("scan_mode", "website");
+                log("Scraper run (website scan)");
+                runRealSiteScan(params, false);
+            };
+            if (runOnStart) {
+                scheduler.schedule(runScraper, 10, TimeUnit.SECONDS);
+                log("Scraper will run once 10s after start (SCRAPER_RUN_ON_START=true)");
+            }
+            if (intervalMinutes > 0) {
+                long initialDelaySeconds = runOnStart ? (intervalMinutes * 60L) : 10L;
+                scheduler.scheduleAtFixedRate(runScraper, initialDelaySeconds, intervalMinutes * 60L, TimeUnit.SECONDS);
+                log("Scraper interval: every " + intervalMinutes + " min, first run in " + (initialDelaySeconds == 10 ? "10s" : (initialDelaySeconds / 60) + " min"));
+            }
+        }
+    }
+
+    private static List<String> readIntervalUrls() {
+        Path f = dataDir.resolve("interval_urls.txt");
+        if (!Files.exists(f)) {
+            return Collections.emptyList();
+        }
+        try {
+            List<String> urls = new ArrayList<>();
+            for (String line : Files.readAllLines(f)) {
+                String u = line.trim();
+                if (!u.isEmpty()) {
+                    urls.add(u);
+                }
+            }
+            return urls;
+        } catch (IOException e) {
+            log("Failed to read interval_urls.txt: " + e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private static void log(String message) {
@@ -104,6 +164,10 @@ public class Main {
             String path = exchange.getRequestURI().getPath();
             if ("/api/status".equals(path)) {
                 handleStatus(exchange);
+                return;
+            }
+            if ("/api/reload".equals(path)) {
+                handleReload(exchange);
                 return;
             }
             if ("/api/logs".equals(path)) {
@@ -169,6 +233,23 @@ public class Main {
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(data);
             }
+        }
+    }
+
+    /** Reload leads and FB queue from CSV (so frontend preview shows latest file contents). */
+    private static void handleReload(HttpExchange exchange) throws IOException {
+        try {
+            synchronized (LEADS) {
+                LEADS.clear();
+                loadLeads();
+            }
+            synchronized (FB_QUEUE) {
+                FB_QUEUE.clear();
+                loadFbQueue();
+            }
+            sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Leads and queue reloaded from CSV\"}");
+        } catch (IOException e) {
+            sendJson(exchange, 500, "{\"ok\":false,\"message\":\"" + jsonEscape(e.getMessage()) + "\"}");
         }
     }
 
@@ -500,14 +581,21 @@ public class Main {
 
         ACTION_COUNT.incrementAndGet();
         switch (name) {
-            case "start_scan":
+            case "start_scan": {
                 scanState = "running";
-                log("Scan started (site=" + params.getOrDefault("target_site", "n/a")
+                String scanMode = params.getOrDefault("scan_mode", "website").toLowerCase();
+                log("Scan started (mode=" + scanMode + ", site=" + params.getOrDefault("target_site", "n/a")
                         + ", country=" + params.getOrDefault("country", "n/a")
                         + ", urls=" + params.getOrDefault("start_urls", "n/a") + ")");
-                BACKGROUND.submit(() -> runRealSiteScan(params, false));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Website scan started (browser will open; refresh leads when done)\"}");
+                if ("facebook".equals(scanMode)) {
+                    BACKGROUND.submit(() -> runRealFbScan(params));
+                    sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Facebook scan started (browser will open; refresh queue when done)\"}");
+                } else {
+                    BACKGROUND.submit(() -> runRealSiteScan(params, false));
+                    sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Website scan started (browser will open; refresh leads when done)\"}");
+                }
                 break;
+            }
             case "pause_scan":
                 scanState = "paused";
                 log("Scan paused");
@@ -518,13 +606,19 @@ public class Main {
                 log("Scan stopped");
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Scan stopped\"}");
                 break;
-            case "test_single_page":
-                log("Single page test scan queued (site=" + params.getOrDefault("target_site", "n/a")
-                        + ", country=" + params.getOrDefault("country", "n/a")
+            case "test_single_page": {
+                String scanMode = params.getOrDefault("scan_mode", "website").toLowerCase();
+                log("Single page test scan queued (mode=" + scanMode + ", site=" + params.getOrDefault("target_site", "n/a")
                         + ", url=" + params.getOrDefault("single_url", "n/a") + ")");
-                BACKGROUND.submit(() -> runRealSiteScan(params, true));
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Single page scan started (browser will open; refresh leads when done)\"}");
+                if ("facebook".equals(scanMode)) {
+                    BACKGROUND.submit(() -> runRealFbScan(params));
+                    sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Single page FB scan started (browser will open; refresh queue when done)\"}");
+                } else {
+                    BACKGROUND.submit(() -> runRealSiteScan(params, true));
+                    sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Single page scan started (browser will open; refresh leads when done)\"}");
+                }
                 break;
+            }
             case "preview_results":
                 log("Preview requested");
                 sendJson(exchange, 200, "{\"ok\":true,\"message\":\"Preview refreshed\"}");
@@ -688,6 +782,7 @@ public class Main {
     }
 
     private static void runRealSiteScan(Map<String, String> params, boolean singlePageOnly) {
+        scanState = "running";
         List<String> urls = new ArrayList<>();
         if (singlePageOnly) {
             String one = params.getOrDefault("single_url", "").trim();
@@ -758,6 +853,8 @@ public class Main {
             }
         } catch (Exception e) {
             log("Website scan failed: " + e.getMessage());
+        } finally {
+            scanState = "idle";
         }
     }
 
@@ -836,6 +933,91 @@ public class Main {
             }
         } catch (Exception e) {
             log("FB analyze failed: " + e.getMessage());
+        } finally {
+            scanState = "idle";
+        }
+    }
+
+    /** Run FB scan (Start Scan with scan_mode=facebook). Uses fb_scan.py with anti-detection. */
+    private static void runRealFbScan(Map<String, String> params) {
+        scanState = "running";
+        List<String> urls = new ArrayList<>();
+        String sourceType = params.getOrDefault("fb_source_type", "marketplace");
+        if ("groups".equalsIgnoreCase(sourceType)) {
+            String groupUrls = params.getOrDefault("fb_group_urls", "");
+            for (String line : groupUrls.split("\n")) {
+                String u = line.trim();
+                if (!u.isEmpty()) {
+                    urls.add(u);
+                }
+            }
+        }
+        if (urls.isEmpty()) {
+            String one = params.getOrDefault("fb_search_url", "").trim();
+            if (!one.isEmpty()) {
+                urls.add(one);
+            }
+        }
+        if (urls.isEmpty()) {
+            log("FB scan skipped: no URLs (set Marketplace URL or group URLs)");
+            return;
+        }
+        Path script = Paths.get("..", "cold_bot", "fb_scan.py").toAbsolutePath().normalize();
+        if (!Files.exists(script)) {
+            log("FB scan failed: script not found at " + script);
+            return;
+        }
+        Path queuePath = dataDir.resolve("fb_queue.csv");
+        List<String> command = new ArrayList<>();
+        command.add("python3");
+        command.add(script.toString());
+        command.add("--queue-path");
+        command.add(queuePath.toString());
+        for (String url : urls) {
+            command.add("--url");
+            command.add(url);
+        }
+        if ("true".equalsIgnoreCase(params.getOrDefault("fb_headless", "false"))) {
+            command.add("--headless");
+        }
+        String storageState = params.getOrDefault("fb_storage_state", "").trim();
+        if (!storageState.isEmpty()) {
+            Path statePath = Paths.get(storageState).toAbsolutePath().normalize();
+            if (Files.exists(statePath)) {
+                command.add("--storage-state");
+                command.add(statePath.toString());
+            }
+        }
+        lastScanAt = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+        log("FB scan running (browser may open; anti-detection limits applied)...");
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            builder.redirectErrorStream(true);
+            Process process = builder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    log("FB scan: " + line);
+                }
+            }
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                synchronized (FB_QUEUE) {
+                    FB_QUEUE.clear();
+                    try {
+                        loadFbQueue();
+                    } catch (IOException e) {
+                        log("FB queue reload failed: " + e.getMessage());
+                    }
+                }
+                log("FB scan finished; queue updated.");
+            } else {
+                log("FB scan finished with exit code " + exitCode);
+            }
+        } catch (Exception e) {
+            log("FB scan failed: " + e.getMessage());
+        } finally {
+            scanState = "idle";
         }
     }
 
@@ -1044,13 +1226,18 @@ public class Main {
                 if (parts.size() < 10) {
                     continue;
                 }
-                String bedrooms = parts.size() > 6 ? parts.get(6) : "";
-                String size = parts.size() > 7 ? parts.get(7) : "";
-                String listingType = parts.size() > 8 ? parts.get(8) : "";
-                int emailIdx = parts.size() >= 13 ? 9 : 6;
-                int phoneIdx = parts.size() >= 13 ? 10 : 7;
-                int scanIdx = parts.size() >= 13 ? 11 : 8;
-                int statusIdx = parts.size() >= 13 ? 12 : 9;
+                String bedrooms = parts.size() >= 13 ? parts.get(6) : "";
+                String bathrooms = parts.size() >= 19 ? parts.get(7) : "";
+                String size = parts.size() >= 13 ? (parts.size() >= 19 ? parts.get(8) : parts.get(7)) : "";
+                String listingType = parts.size() >= 13 ? (parts.size() >= 19 ? parts.get(9) : parts.get(8)) : "";
+                String source = parts.size() >= 19 ? parts.get(10) : "";
+                String isPrivate = parts.size() >= 19 ? parts.get(11) : "";
+                String agencyName = parts.size() >= 19 ? parts.get(12) : "";
+                String imageUrl = parts.size() >= 19 ? parts.get(13) : "";
+                int emailIdx = parts.size() >= 19 ? 14 : (parts.size() >= 13 ? 9 : 6);
+                int phoneIdx = parts.size() >= 19 ? 15 : (parts.size() >= 13 ? 10 : 7);
+                int scanIdx = parts.size() >= 19 ? 16 : (parts.size() >= 13 ? 11 : 8);
+                int statusIdx = parts.size() >= 19 ? 17 : (parts.size() >= 13 ? 12 : 9);
                 Lead lead = new Lead(
                         parseInt(parts.get(0), NEXT_ID.get()),
                         parts.get(1),
@@ -1059,8 +1246,13 @@ public class Main {
                         parts.get(4),
                         parts.get(5),
                         bedrooms,
+                        bathrooms,
                         size,
                         listingType,
+                        source,
+                        isPrivate,
+                        agencyName,
+                        imageUrl,
                         parts.get(emailIdx),
                         parts.get(phoneIdx),
                         parts.get(scanIdx),
@@ -1189,7 +1381,7 @@ public class Main {
 
     private static synchronized void persistLeads() throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(leadsFile), StandardCharsets.UTF_8))) {
-            writer.write("id,url,title,description,price,location,bedrooms,size,listing_type,contact_email,contact_phone,scan_time,status");
+            writer.write("id,url,title,description,price,location,bedrooms,bathrooms,size,listing_type,source,is_private,agency_name,image_url,contact_email,contact_phone,scan_time,status");
             writer.newLine();
             for (Lead lead : LEADS) {
                 writer.write(lead.toCsv());
@@ -1625,16 +1817,22 @@ public class Main {
         private final String price;
         private final String location;
         private final String bedrooms;
+        private final String bathrooms;
         private final String size;
         private final String listingType;
+        private final String source;
+        private final String isPrivate;
+        private final String agencyName;
+        private final String imageUrl;
         private final String contactEmail;
         private final String contactPhone;
         private final String scanTime;
         private String status;
 
         private Lead(int id, String url, String title, String description, String price, String location,
-                     String bedrooms, String size, String listingType,
-                     String contactEmail, String contactPhone, String scanTime, String status) {
+                    String bedrooms, String bathrooms, String size, String listingType,
+                    String source, String isPrivate, String agencyName, String imageUrl,
+                    String contactEmail, String contactPhone, String scanTime, String status) {
             this.id = id;
             this.url = url;
             this.title = title;
@@ -1642,8 +1840,13 @@ public class Main {
             this.price = price;
             this.location = location;
             this.bedrooms = bedrooms != null ? bedrooms : "";
+            this.bathrooms = bathrooms != null ? bathrooms : "";
             this.size = size != null ? size : "";
             this.listingType = listingType != null ? listingType : "";
+            this.source = source != null ? source : "";
+            this.isPrivate = isPrivate != null ? isPrivate : "";
+            this.agencyName = agencyName != null ? agencyName : "";
+            this.imageUrl = imageUrl != null ? imageUrl : "";
             this.contactEmail = contactEmail;
             this.contactPhone = contactPhone;
             this.scanTime = scanTime;
@@ -1651,7 +1854,7 @@ public class Main {
         }
 
         private boolean matches(String query) {
-            String haystack = (title + " " + description + " " + price + " " + location + " " + bedrooms + " " + size + " " + listingType + " " + contactEmail + " " + contactPhone).toLowerCase();
+            String haystack = (title + " " + description + " " + price + " " + location + " " + bedrooms + " " + bathrooms + " " + size + " " + listingType + " " + source + " " + agencyName + " " + contactEmail + " " + contactPhone).toLowerCase();
             return haystack.contains(query);
         }
 
@@ -1663,8 +1866,13 @@ public class Main {
                     + csvEscape(price) + ","
                     + csvEscape(location) + ","
                     + csvEscape(bedrooms) + ","
+                    + csvEscape(bathrooms) + ","
                     + csvEscape(size) + ","
                     + csvEscape(listingType) + ","
+                    + csvEscape(source) + ","
+                    + csvEscape(isPrivate) + ","
+                    + csvEscape(agencyName) + ","
+                    + csvEscape(imageUrl) + ","
                     + csvEscape(contactEmail) + ","
                     + csvEscape(contactPhone) + ","
                     + csvEscape(scanTime) + ","
@@ -1680,8 +1888,13 @@ public class Main {
                     + "\"price\":\"" + jsonEscape(price) + "\","
                     + "\"location\":\"" + jsonEscape(location) + "\","
                     + "\"bedrooms\":\"" + jsonEscape(bedrooms) + "\","
+                    + "\"bathrooms\":\"" + jsonEscape(bathrooms) + "\","
                     + "\"size\":\"" + jsonEscape(size) + "\","
                     + "\"listingType\":\"" + jsonEscape(listingType) + "\","
+                    + "\"source\":\"" + jsonEscape(source) + "\","
+                    + "\"isPrivate\":\"" + jsonEscape(isPrivate) + "\","
+                    + "\"agencyName\":\"" + jsonEscape(agencyName) + "\","
+                    + "\"imageUrl\":\"" + jsonEscape(imageUrl) + "\","
                     + "\"contactEmail\":\"" + jsonEscape(contactEmail) + "\","
                     + "\"contactPhone\":\"" + jsonEscape(contactPhone) + "\","
                     + "\"scanTime\":\"" + jsonEscape(scanTime) + "\","

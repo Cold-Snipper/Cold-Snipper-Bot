@@ -1,8 +1,34 @@
-# Cold Bot
+# Cold Bot (backend)
 
-Cold Bot is an automated, privacy-focused, local-AI-powered cold outreach tool for real estate.
-Its primary purpose is to find private sellers (FSBO) on public marketplaces, extract contact
-details, and send respectful, personalized partnership proposals — all while keeping data local.
+Automated, privacy-focused, local-AI cold outreach for real estate: find FSBO listings, extract contacts, send proposals. Data stays local.
+
+## Quick start
+
+```bash
+# One-time: venv + deps (from cold_bot/)
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && python -m playwright install chromium
+
+# Health check
+python main.py --config config.yaml --check
+
+# Setup then run scan loop (dry-run)
+python main.py --config config.yaml --setup
+python main.py --config config.yaml
+```
+
+Use `--live` to enable real sends. Use the **repo root** `run-and-test-localhost.sh` to run the Java UI with this backend.
+
+## Run modes
+
+| Mode | Command |
+|------|--------|
+| Health check | `python main.py --config config.yaml --check` |
+| Setup (phase1 + phase2) | `python main.py --config config.yaml --setup` |
+| Scan loop (dry-run) | `python main.py --config config.yaml` |
+| Scan loop (live) | `python main.py --config config.yaml --live` |
+
+Run from `cold_bot/` or from repo root via `python main.py` (root script forwards here).
 
 ## Core Objectives (in order)
 - Automatically discover motivated private sellers on public listing sites

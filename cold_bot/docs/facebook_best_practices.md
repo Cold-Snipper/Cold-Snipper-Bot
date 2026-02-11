@@ -30,3 +30,12 @@ This project is intended for low-volume, ethical, and compliant usage. Facebook 
 - Log all actions for auditability.
 - Implement max actions per hour.
 - Stop scanning if detection or blocks are observed.
+
+## Config (UI Start Scan in FB mode)
+When the UI runs a scan with **Facebook** mode, `fb_scan.py` uses these config keys for anti-detection:
+- `limits.fb_requests_per_minute` (default 10): cap requests per minute.
+- `limits.fb_delay_min` / `limits.fb_delay_max` (default 5–15 s): randomized delay between scrolls.
+- `limits.fb_max_urls_per_run`: max feed URLs per run (e.g. 8).
+- `limits.fb_max_scroll_depth`: max scroll steps per page (e.g. 20).
+- `facebook.headless` (default false): prefer non-headless for FB to reduce detection risk.
+Stealth (playwright-stealth) is always applied for FB context; viewport is randomized.

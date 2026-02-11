@@ -5,8 +5,10 @@ Dry-run by default (print, no DB). Use --live to write to SQLite.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import random
+import re
 import sqlite3
 import time
 from typing import Any, Dict, List, Optional
@@ -41,10 +43,35 @@ LISTING_SCHEMA = {
     "is_private": False,
     "agency_name": "",
     "url": "",
+    "bedrooms": "",
+    "bathrooms": "",
+    "size": "",
+    "listing_type": "",
+    "image_url": "",
 }
 
 PRIVATE_KWS = ["private seller", "owner direct", "fsbo", "for sale by owner", "no agent"]
 AGENT_KWS = ["agency", "broker", "real estate", "realtor", "listing agent"]
+
+
+def _fill_beds_baths_size(soup: Any, out: Dict[str, Any]) -> None:
+    """Fill bedrooms, bathrooms, size from card HTML when present."""
+    text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
+    if not text:
+        return
+    bed_m = re.search(r"(\d+)\s*(?:bed|bedroom|chambre)s?", text, re.IGNORECASE)
+    if bed_m:
+        out["bedrooms"] = bed_m.group(1)
+    bath_m = re.search(r"(\d+)\s*(?:bath|bathroom|salle de bain)s?", text, re.IGNORECASE)
+    if bath_m:
+        out["bathrooms"] = bath_m.group(1)
+    m2_m = re.search(r"(\d+(?:[.,]\d+)?)\s*m²", text, re.IGNORECASE)
+    if m2_m:
+        out["size"] = m2_m.group(1).replace(",", ".") + " m²"
+    else:
+        sqft_m = re.search(r"(\d+(?:[.,]\d+)?)\s*(?:sq\.?\s*ft|sqft)", text, re.IGNORECASE)
+        if sqft_m:
+            out["size"] = sqft_m.group(1).replace(",", ".") + " sqft"
 
 
 def _random_delay(min_sec: float, max_sec: float) -> None:
@@ -210,7 +237,6 @@ def save_to_db(listings: List[Dict[str, Any]], db_path: str) -> None:
     for row in listings:
         url = row.get("url") or ""
         h = hashlib.sha256(url.encode()).hexdigest()[:32]
-        import json
         contact_json = json.dumps(row.get("contact") or {})
         conn.execute(
             """INSERT OR REPLACE INTO scraped_listings
@@ -257,6 +283,10 @@ class AtHomeScraper(Scraper):
         out["description"] = desc.get_text(strip=True) if desc else ""
         a = soup.find("a", href=True)
         out["url"] = a["href"] if a and a.get("href") else ""
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
         return out
 
 
@@ -282,6 +312,10 @@ class ImmotopScraper(Scraper):
         out["description"] = desc.get_text(strip=True) if desc else ""
         a = soup.find("a", href=True)
         out["url"] = a["href"] if a and a.get("href") else ""
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
         return out
 
 
@@ -314,6 +348,142 @@ class RightmoveScraper(Scraper):
         if href and not href.startswith("http"):
             href = "https://www.rightmove.co.uk" + href if href.startswith("/") else ""
         out["url"] = href
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
+        return out
+
+
+class NextimmoScraper(Scraper):
+    """Luxembourg: nextimmo.lu."""
+    default_selector = "[class*='listing'], [class*='card'], article a[href*='/property'], a[href*='/listing']"
+    site_name = "nextimmo"
+
+    def extract_listing_data(self, element: Any) -> Dict[str, Any]:
+        out = dict(LISTING_SCHEMA)
+        out["source"] = self.site_name
+        if hasattr(element, "inner_html"):
+            html = element.inner_html()
+        else:
+            html = str(element) if hasattr(element, "__str__") else ""
+        soup = BeautifulSoup(html, "lxml")
+        t = soup.select_one("h2, h3, .title, [class*='title'], [class*='Title']")
+        out["title"] = t.get_text(strip=True) if t else ""
+        p = soup.select_one(".price, [class*='price'], [class*='Price']")
+        out["price"] = p.get_text(strip=True) if p else ""
+        loc = soup.select_one(".location, [class*='location'], [class*='address'], address")
+        out["location"] = loc.get_text(strip=True) if loc else ""
+        desc = soup.select_one(".description, [class*='description']")
+        out["description"] = desc.get_text(strip=True) if desc else ""
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = "https://www.nextimmo.lu" + href if href.startswith("/") else ""
+        out["url"] = href
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
+        return out
+
+
+class BingoScraper(Scraper):
+    """Luxembourg: bingo.lu."""
+    default_selector = "[class*='listing'], [class*='property'], [class*='card'], article a[href*='/property']"
+    site_name = "bingo"
+
+    def extract_listing_data(self, element: Any) -> Dict[str, Any]:
+        out = dict(LISTING_SCHEMA)
+        out["source"] = self.site_name
+        if hasattr(element, "inner_html"):
+            html = element.inner_html()
+        else:
+            html = str(element) if hasattr(element, "__str__") else ""
+        soup = BeautifulSoup(html, "lxml")
+        t = soup.select_one("h2, h3, .title, [class*='title']")
+        out["title"] = t.get_text(strip=True) if t else ""
+        p = soup.select_one(".price, [class*='price']")
+        out["price"] = p.get_text(strip=True) if p else ""
+        loc = soup.select_one(".location, [class*='location'], [class*='address'], address")
+        out["location"] = loc.get_text(strip=True) if loc else ""
+        desc = soup.select_one(".description, [class*='description']")
+        out["description"] = desc.get_text(strip=True) if desc else ""
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = "https://www.bingo.lu" + href if href.startswith("/") else ""
+        out["url"] = href
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
+        return out
+
+
+class PropertyWebScraper(Scraper):
+    """Luxembourg: propertyweb.lu (commercial/residential)."""
+    default_selector = "[class*='listing'], [class*='property'], [class*='card'], article a[href*='/property']"
+    site_name = "propertyweb"
+
+    def extract_listing_data(self, element: Any) -> Dict[str, Any]:
+        out = dict(LISTING_SCHEMA)
+        out["source"] = self.site_name
+        if hasattr(element, "inner_html"):
+            html = element.inner_html()
+        else:
+            html = str(element) if hasattr(element, "__str__") else ""
+        soup = BeautifulSoup(html, "lxml")
+        t = soup.select_one("h2, h3, .title, [class*='title']")
+        out["title"] = t.get_text(strip=True) if t else ""
+        p = soup.select_one(".price, [class*='price']")
+        out["price"] = p.get_text(strip=True) if p else ""
+        loc = soup.select_one(".location, [class*='location'], [class*='address'], address")
+        out["location"] = loc.get_text(strip=True) if loc else ""
+        desc = soup.select_one(".description, [class*='description']")
+        out["description"] = desc.get_text(strip=True) if desc else ""
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = "https://www.propertyweb.lu" + href if href.startswith("/") else ""
+        out["url"] = href
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
+        return out
+
+
+class WortimmoScraper(Scraper):
+    """Luxembourg: wortimmo.lu (agency directory / listings)."""
+    default_selector = "a[href*='/listing'], a[href*='/property'], [class*='listing'], [class*='card']"
+    site_name = "wortimmo"
+
+    def extract_listing_data(self, element: Any) -> Dict[str, Any]:
+        out = dict(LISTING_SCHEMA)
+        out["source"] = self.site_name
+        if hasattr(element, "inner_html"):
+            html = element.inner_html()
+        else:
+            html = str(element) if hasattr(element, "__str__") else ""
+        soup = BeautifulSoup(html, "lxml")
+        t = soup.select_one("h2, h3, .title, [class*='title']")
+        out["title"] = t.get_text(strip=True) if t else ""
+        p = soup.select_one(".price, [class*='price']")
+        out["price"] = p.get_text(strip=True) if p else ""
+        loc = soup.select_one(".location, [class*='location'], [class*='address'], address")
+        out["location"] = loc.get_text(strip=True) if loc else ""
+        desc = soup.select_one(".description, [class*='description']")
+        out["description"] = desc.get_text(strip=True) if desc else ""
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = "https://www.wortimmo.lu" + href if href.startswith("/") else ""
+        out["url"] = href
+        img = soup.find("img", src=True)
+        if img and img.get("src"):
+            out["image_url"] = img["src"]
+        _fill_beds_baths_size(soup, out)
         return out
 
 
@@ -408,12 +578,20 @@ class FBMarketplaceScraper(Scraper):
 
 
 def get_scraper_for_source(config: Dict[str, Any], source_type: str) -> Scraper:
-    if source_type == "athome" or "athome" in str(config.get("target_sites_by_country") or "").lower():
+    if source_type == "athome":
         return AtHomeScraper(config)
     if source_type == "immotop":
         return ImmotopScraper(config)
     if source_type == "rightmove":
         return RightmoveScraper(config)
+    if source_type == "nextimmo":
+        return NextimmoScraper(config)
+    if source_type == "bingo":
+        return BingoScraper(config)
+    if source_type == "propertyweb":
+        return PropertyWebScraper(config)
+    if source_type == "wortimmo":
+        return WortimmoScraper(config)
     if source_type in ("facebook", "fb", "marketplace"):
         return FBMarketplaceScraper(config)
     return Scraper(config)
@@ -421,16 +599,30 @@ def get_scraper_for_source(config: Dict[str, Any], source_type: str) -> Scraper:
 
 def _infer_source_from_url(url: str) -> str:
     u = (url or "").lower()
+    if "facebook.com/marketplace" in u or "fb.com/marketplace" in u:
+        return "marketplace"
+    if "facebook.com/groups" in u or "fb.com/groups" in u:
+        return "facebook"
+    # Luxembourg-specific domains (check before generic)
+    if "nextimmo.lu" in u:
+        return "nextimmo"
+    if "bingo.lu" in u:
+        return "bingo"
+    if "propertyweb.lu" in u:
+        return "propertyweb"
+    if "wortimmo.lu" in u:
+        return "wortimmo"
+    if "athome.lu" in u or "at-home.lu" in u:
+        return "athome"
+    if "immotop.lu" in u:
+        return "immotop"
+    # Generic domain matches
     if "athome" in u or "at-home" in u:
         return "athome"
     if "immotop" in u:
         return "immotop"
     if "rightmove" in u:
         return "rightmove"
-    if "facebook.com/marketplace" in u or "fb.com/marketplace" in u:
-        return "marketplace"
-    if "facebook.com/groups" in u or "fb.com/groups" in u:
-        return "facebook"
     return "generic"
 
 

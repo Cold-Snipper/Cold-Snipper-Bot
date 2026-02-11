@@ -54,6 +54,7 @@ let polling = true;
 let lastQuery = "";
 let lastCommQuery = "";
 let lastClientQuery = "";
+let lastScanState = "";
 let selectedClientId = "";
 let selectedClientEmail = "";
 let targetsData = null;
@@ -129,6 +130,16 @@ async function fetchStatus() {
     if (stageLoggingDisplay) stageLoggingDisplay.textContent = (data.logCount ?? 0) > 0 ? "Writing" : "Idle";
     if (stageCrmDisplay) stageCrmDisplay.textContent = (data.clientCount ?? 0) > 0 ? "Populated" : "Empty";
     if (stage2LastScan) stage2LastScan.textContent = data.lastScanAt || "Never";
+    // Real-time: refresh leads/FB when scan is running (every status poll) or when scan just finished
+    const scanState = (data.scanState || "").toLowerCase();
+    if (scanState === "running") {
+      refreshLeads(lastQuery);
+      refreshFbQueue();
+    } else if (lastScanState === "running" && scanState === "idle") {
+      refreshLeads(lastQuery);
+      refreshFbQueue();
+    }
+    lastScanState = scanState;
   } catch (err) {
     console.warn("Status fetch failed", err);
   }
@@ -199,10 +210,22 @@ function compactPayload(payload) {
   return output;
 }
 
+function escapeHtml(str) {
+  if (str == null || str === "") return "";
+  const s = String(str);
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function truncate(value, maxLength = 60) {
   if (!value) return "";
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength)}...`;
+  const s = String(value);
+  if (s.length <= maxLength) return s;
+  return `${s.slice(0, maxLength)}...`;
 }
 
 function populateSelect(selectId, options, placeholder) {
@@ -560,6 +583,11 @@ function getListingTypeFilter() {
 }
 
 async function refreshLeads(query, listingTypeFilter) {
+  try {
+    await fetch(window.location.origin + "/api/reload");
+  } catch (e) {
+    /* ignore */
+  }
   const filter = listingTypeFilter !== undefined ? listingTypeFilter : getListingTypeFilter();
   const url = new URL("/api/leads", window.location.origin);
   url.searchParams.set("limit", "200");
@@ -591,19 +619,25 @@ function renderLeads(leads) {
     const row = document.createElement("tr");
     const type = (lead.listingType || "").toLowerCase();
     const typeLabel = type === "rent" ? "Rent" : type === "buy" ? "Buy" : (lead.listingType || "—");
+    const safeUrl = lead.url && (lead.url.startsWith("http://") || lead.url.startsWith("https://")) ? lead.url : "#";
+    const privateLabel = (lead.isPrivate || "").toString().toLowerCase() === "true" ? "Yes" : (lead.isPrivate ? lead.isPrivate : "—");
     row.innerHTML = `
-      <td><input class="lead-select" type="checkbox" value="${lead.id}" /></td>
-      <td>${lead.id}</td>
-      <td><a href="${lead.url}" target="_blank" rel="noopener">${truncate(lead.title, 40)}</a></td>
-      <td>${typeLabel}</td>
-      <td>${lead.price || "—"}</td>
-      <td>${lead.bedrooms || "—"}</td>
-      <td>${lead.size || "—"}</td>
-      <td>${lead.location || "—"}</td>
-      <td>${lead.status}</td>
-      <td>${lead.contactEmail || "—"}</td>
-      <td>${lead.contactPhone || "—"}</td>
-      <td>${lead.scanTime}</td>
+      <td><input class="lead-select" type="checkbox" value="${escapeHtml(lead.id)}" /></td>
+      <td>${escapeHtml(lead.id)}</td>
+      <td><a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(truncate(lead.title, 40))}</a></td>
+      <td>${escapeHtml(typeLabel)}</td>
+      <td>${escapeHtml(lead.price || "—")}</td>
+      <td>${escapeHtml(lead.bedrooms || "—")}</td>
+      <td>${escapeHtml(lead.bathrooms || "—")}</td>
+      <td>${escapeHtml(lead.size || "—")}</td>
+      <td>${escapeHtml(lead.location || "—")}</td>
+      <td>${escapeHtml(lead.source || "—")}</td>
+      <td>${escapeHtml(privateLabel)}</td>
+      <td>${escapeHtml(lead.agencyName || "—")}</td>
+      <td>${escapeHtml(lead.status)}</td>
+      <td>${escapeHtml(lead.contactEmail || "—")}</td>
+      <td>${escapeHtml(lead.contactPhone || "—")}</td>
+      <td>${escapeHtml(lead.scanTime)}</td>
     `;
     leadsBody.appendChild(row);
   }
@@ -622,6 +656,11 @@ function selectedFbIds() {
 }
 
 async function refreshFbQueue() {
+  try {
+    await fetch(window.location.origin + "/api/reload");
+  } catch (e) {
+    /* ignore */
+  }
   const url = new URL("/api/fbqueue", window.location.origin);
   url.searchParams.set("limit", "200");
   try {
@@ -637,12 +676,13 @@ function renderFbQueue(items) {
   fbQueueBody.innerHTML = "";
   for (const item of items) {
     const row = document.createElement("tr");
+    const fbUrl = item.url && (item.url.startsWith("http://") || item.url.startsWith("https://")) ? item.url : "#";
     row.innerHTML = `
-      <td><input class="fb-select" type="checkbox" value="${item.id}" /></td>
-      <td>${item.id}</td>
-      <td><a href="${item.url}" target="_blank" rel="noopener">${item.url}</a></td>
-      <td>${item.status}</td>
-      <td>${item.savedAt}</td>
+      <td><input class="fb-select" type="checkbox" value="${escapeHtml(item.id)}" /></td>
+      <td>${escapeHtml(item.id)}</td>
+      <td><a href="${escapeHtml(fbUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(truncate(item.url, 60))}</a></td>
+      <td>${escapeHtml(item.status)}</td>
+      <td>${escapeHtml(item.savedAt)}</td>
     `;
     fbQueueBody.appendChild(row);
   }
@@ -1040,7 +1080,7 @@ updateScanModeUI();
 updateFbSourceUI();
 buildFbSearchUrl();
 fetchStage1Config();
-setInterval(fetchStatus, 2000);
+setInterval(fetchStatus, 1500);
 setInterval(fetchLogs, 1000);
 setInterval(() => refreshLeads(lastQuery), 5000);
 
