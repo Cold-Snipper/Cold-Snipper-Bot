@@ -493,9 +493,9 @@ function updateScanModeUI() {
 }
 
 async function sendAction(name) {
-  if (name === "reset_all_scanned_data" && !confirm("Clear all leads and FB queue? This cannot be undone.")) {
-    return;
-  }
+    if (name === "reset_all_scanned_data" && !confirm("Clear all leads, FB queue, communications, and clients? This cannot be undone.")) {
+      return;
+    }
   if (name === "export_excel") {
     window.location.href = "/api/export/leads.xls";
     showResponse("Download started (leads_export.xls)");
@@ -537,6 +537,8 @@ async function sendAction(name) {
     if (name === "reset_all_scanned_data") {
       refreshLeads(lastQuery);
       refreshFbQueue();
+      refreshComms(lastCommQuery);
+      refreshClients(lastClientQuery);
     }
     if (name === "add_comm") {
       refreshComms(lastCommQuery);

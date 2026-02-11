@@ -64,13 +64,13 @@ def _fill_beds_baths_size(soup: Any, out: Dict[str, Any]) -> None:
     text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
     if not text:
         return
-    bed_m = re.search(r"(\d+)\s*(?:bed|bedroom|chambre)s?", text, re.IGNORECASE)
+    bed_m = re.search(r"(\d+)\s*(?:bed|bedroom|chambre|chb)s?", text, re.IGNORECASE)
     if bed_m:
         out["bedrooms"] = bed_m.group(1)
     bath_m = re.search(r"(\d+)\s*(?:bath|bathroom|salle de bain)s?", text, re.IGNORECASE)
     if bath_m:
         out["bathrooms"] = bath_m.group(1)
-    m2_m = re.search(r"(\d+(?:[.,]\d+)?)\s*m²", text, re.IGNORECASE)
+    m2_m = re.search(r"(\d+(?:[.,]\d+)?)\s*m²", text, re.IGNORECASE) or re.search(r"(\d+(?:[.,]\d+)?)\s*m2\b", text, re.IGNORECASE)
     if m2_m:
         out["size"] = m2_m.group(1).replace(",", ".") + " m²"
     else:
@@ -269,7 +269,14 @@ def save_to_db(listings: List[Dict[str, Any]], db_path: str) -> None:
 
 
 class AtHomeScraper(Scraper):
+    # athome.lu: listing cards may be .listing-item or links to /id-XXX.html; try multiple
     default_selector = ".listing-item"
+    _FALLBACK_SELECTORS = [
+        "a[href*='/id-'][href$='.html']",
+        "a[href*='/en/buy/'][href*='.html'], a[href*='/en/rent/'][href*='.html']",
+        "[class*='card'] a[href*='.html']",
+        "article a[href*='/buy/'], article a[href*='/rent/']",
+    ]
     site_name = "athome"
 
     # Cookie/consent: try locator by text first, then CSS selectors
@@ -381,6 +388,18 @@ class AtHomeScraper(Scraper):
                 continue
         LOG.warning("athome: could not navigate to section %s", section)
 
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        """Try default selector then fallbacks (athome.lu uses various card/link structures)."""
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("athome: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
+
     def scrape(
         self,
         url: str,
@@ -420,6 +439,11 @@ class AtHomeScraper(Scraper):
             self.navigate_to_section(section)
             self.scroll()
             _random_delay(self.delay_min, self.delay_max)
+            # Wait for listing links to appear (JS-rendered)
+            try:
+                self._page.wait_for_selector("a[href*='/id-'][href$='.html'], .listing-item", timeout=15_000)
+            except Exception:
+                pass
             elements = self.collect_listings()
             listings: List[Dict[str, Any]] = []
             for el in elements:
@@ -453,6 +477,12 @@ class AtHomeScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        link_url = a["href"] if a and a.get("href") else ""
+        if link_url and ".html" in link_url and "athome" in link_url:
+            out["url"] = link_url if link_url.startswith("http") else "https://www.athome.lu" + (link_url if link_url.startswith("/") else "/" + link_url)
+        else:
+            out["url"] = link_url or ""
         t = soup.select_one(".title, [class*='title']")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price']")
@@ -461,18 +491,45 @@ class AtHomeScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        out["url"] = a["href"] if a and a.get("href") else ""
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
         _fill_beds_baths_size(soup, out)
+        # When element is just a link (e.g. "Apartment2 60€906,303"), parse link text
+        if not out["title"] and not out["price"] and a:
+            full_text = a.get_text(strip=True) or ""
+            if full_text:
+                out["title"] = full_text[:200]
+            price_match = re.search(r"€[\d\s,.]+", full_text)
+            if price_match:
+                out["price"] = price_match.group(0).strip()
+            _fill_beds_baths_size(soup, out)
+        if out["url"] and not out["url"].startswith("http"):
+            out["url"] = "https://www.athome.lu" + (out["url"] if out["url"].startswith("/") else "/" + out["url"])
         return out
 
 
 class ImmotopScraper(Scraper):
+    """Luxembourg: immotop.lu. Listings at /annonces/ID; FR default."""
     default_selector = ".property-item"
     site_name = "immotop"
+    _BASE = "https://www.immotop.lu"
+    _FALLBACK_SELECTORS = [
+        "a[href*='/annonces/']",
+        "[class*='card'] a[href*='/annonces/']",
+        "article a[href*='/annonces/']",
+    ]
+
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("immotop: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
 
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
@@ -482,6 +539,11 @@ class ImmotopScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        href = a["href"] if a and a.get("href") else ""
+        if href and not href.startswith("http"):
+            href = self._BASE + (href if href.startswith("/") else "/" + href)
+        out["url"] = href
         t = soup.select_one(".title, [class*='title'], .property-title")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price']")
@@ -490,12 +552,19 @@ class ImmotopScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        out["url"] = a["href"] if a and a.get("href") else ""
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
         _fill_beds_baths_size(soup, out)
+        if not out["title"] or not out["price"]:
+            full_text = a.get_text(strip=True) if a else soup.get_text(separator=" ", strip=True)
+            if full_text and not out["title"]:
+                out["title"] = full_text[:200]
+            if full_text:
+                price_match = re.search(r"€[\d\s,.]+", full_text)
+                if price_match and not out["price"]:
+                    out["price"] = price_match.group(0).strip()
+        return out
         return out
 
 
@@ -536,9 +605,25 @@ class RightmoveScraper(Scraper):
 
 
 class NextimmoScraper(Scraper):
-    """Luxembourg: nextimmo.lu."""
-    default_selector = "[class*='listing'], [class*='card'], article a[href*='/property'], a[href*='/listing']"
+    """Luxembourg: nextimmo.lu. Listings at /en/details/ID; EN."""
+    default_selector = "[class*='listing'], [class*='card'], article a[href*='/details/']"
     site_name = "nextimmo"
+    _BASE = "https://nextimmo.lu"
+    _FALLBACK_SELECTORS = [
+        "a[href*='/en/details/']",
+        "a[href*='/details/']",
+    ]
+
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("nextimmo: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
 
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
@@ -548,6 +633,11 @@ class NextimmoScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = self._BASE + (href if href.startswith("/") else "/" + href)
+        out["url"] = href
         t = soup.select_one("h2, h3, .title, [class*='title'], [class*='Title']")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price'], [class*='Price']")
@@ -556,22 +646,41 @@ class NextimmoScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        href = a.get("href") if a else ""
-        if href and not href.startswith("http"):
-            href = "https://www.nextimmo.lu" + href if href.startswith("/") else ""
-        out["url"] = href
+        full_text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
+        if full_text and not out["price"]:
+            price_match = re.search(r"[\d\s,.]+\s*€", full_text) or re.search(r"€[\d\s,.]+", full_text)
+            if price_match:
+                out["price"] = price_match.group(0).strip()
+        if full_text and not out["title"] and a:
+            out["title"] = (a.get_text(strip=True) or full_text)[:200]
+        _fill_beds_baths_size(soup, out)
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
-        _fill_beds_baths_size(soup, out)
         return out
 
 
 class BingoScraper(Scraper):
-    """Luxembourg: bingo.lu."""
+    """Luxembourg: bingo.lu. EN; JS-heavy, may show 'No results' or loading."""
     default_selector = "[class*='listing'], [class*='property'], [class*='card'], article a[href*='/property']"
     site_name = "bingo"
+    _BASE = "https://www.bingo.lu"
+    _FALLBACK_SELECTORS = [
+        "a[href*='/en/'][href*='.html']",
+        "[class*='card'] a[href*='/en/']",
+        "article a[href*='/en/']",
+    ]
+
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("bingo: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
 
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
@@ -581,6 +690,11 @@ class BingoScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = self._BASE + (href if href.startswith("/") else "/" + href)
+        out["url"] = href
         t = soup.select_one("h2, h3, .title, [class*='title']")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price']")
@@ -589,22 +703,41 @@ class BingoScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        href = a.get("href") if a else ""
-        if href and not href.startswith("http"):
-            href = "https://www.bingo.lu" + href if href.startswith("/") else ""
-        out["url"] = href
+        full_text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
+        if full_text and not out["price"]:
+            price_match = re.search(r"€[\d\s,.]+", full_text) or re.search(r"[\d\s,.]+\s*€", full_text)
+            if price_match:
+                out["price"] = price_match.group(0).strip()
+        if (not out["title"] and a) or (not out["title"] and full_text):
+            out["title"] = (a.get_text(strip=True) if a else full_text)[:200]
+        _fill_beds_baths_size(soup, out)
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
-        _fill_beds_baths_size(soup, out)
         return out
 
 
 class PropertyWebScraper(Scraper):
-    """Luxembourg: propertyweb.lu (commercial/residential)."""
+    """Luxembourg: propertyweb.lu (commercial/residential). EN; cookie consent 'Accept All Cookies'."""
     default_selector = "[class*='listing'], [class*='property'], [class*='card'], article a[href*='/property']"
     site_name = "propertyweb"
+    _BASE = "https://www.propertyweb.lu"
+    _FALLBACK_SELECTORS = [
+        "a[href*='/en/to-let/'][href*='/']",
+        "a[href*='/en/for-sale/'][href*='/']",
+        "a[href*='/en/investment/'][href*='/']",
+    ]
+
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("propertyweb: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
 
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
@@ -614,6 +747,11 @@ class PropertyWebScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = self._BASE + (href if href.startswith("/") else "/" + href)
+        out["url"] = href
         t = soup.select_one("h2, h3, .title, [class*='title']")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price']")
@@ -622,22 +760,40 @@ class PropertyWebScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        href = a.get("href") if a else ""
-        if href and not href.startswith("http"):
-            href = "https://www.propertyweb.lu" + href if href.startswith("/") else ""
-        out["url"] = href
+        full_text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
+        if full_text and not out["price"]:
+            price_match = re.search(r"€[\d\s,.]+", full_text) or re.search(r"[\d\s,.]+\s*€", full_text)
+            if price_match:
+                out["price"] = price_match.group(0).strip()
+        if not out["title"] and (a or full_text):
+            out["title"] = (a.get_text(strip=True) if a else full_text)[:200]
+        _fill_beds_baths_size(soup, out)
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
-        _fill_beds_baths_size(soup, out)
         return out
 
 
 class WortimmoScraper(Scraper):
-    """Luxembourg: wortimmo.lu (agency directory / listings)."""
-    default_selector = "a[href*='/listing'], a[href*='/property'], [class*='listing'], [class*='card']"
+    """Luxembourg: wortimmo.lu. Listings at /fr/vente-...-id_XXX or /fr/location/...-id_XXX; FR."""
+    default_selector = "a[href*='-id_'], a[href*='/vente-'], a[href*='/location/']"
     site_name = "wortimmo"
+    _BASE = "https://www.wortimmo.lu"
+    _FALLBACK_SELECTORS = [
+        "[class*='card'] a[href*='-id_']",
+        "[class*='listing'] a[href*='-id_']",
+    ]
+
+    def collect_listings(self, selector: Optional[str] = None) -> List[Any]:
+        for sel in [selector or self.selector] + [s for s in self._FALLBACK_SELECTORS if s != (selector or self.selector)]:
+            try:
+                elements = self._page.query_selector_all(sel)
+                if elements and len(elements) > 0:
+                    LOG.info("wortimmo: collected %d elements with selector %s", len(elements), sel[:50])
+                    return list(elements)
+            except Exception:
+                continue
+        return []
 
     def extract_listing_data(self, element: Any) -> Dict[str, Any]:
         out = dict(LISTING_SCHEMA)
@@ -647,6 +803,11 @@ class WortimmoScraper(Scraper):
         else:
             html = str(element) if hasattr(element, "__str__") else ""
         soup = BeautifulSoup(html, "lxml")
+        a = soup.find("a", href=True)
+        href = a.get("href") if a else ""
+        if href and not href.startswith("http"):
+            href = self._BASE + (href if href.startswith("/") else "/" + href)
+        out["url"] = href
         t = soup.select_one("h2, h3, .title, [class*='title']")
         out["title"] = t.get_text(strip=True) if t else ""
         p = soup.select_one(".price, [class*='price']")
@@ -655,15 +816,17 @@ class WortimmoScraper(Scraper):
         out["location"] = loc.get_text(strip=True) if loc else ""
         desc = soup.select_one(".description, [class*='description']")
         out["description"] = desc.get_text(strip=True) if desc else ""
-        a = soup.find("a", href=True)
-        href = a.get("href") if a else ""
-        if href and not href.startswith("http"):
-            href = "https://www.wortimmo.lu" + href if href.startswith("/") else ""
-        out["url"] = href
+        full_text = soup.get_text(separator=" ", strip=True) if hasattr(soup, "get_text") else ""
+        if full_text and not out["price"]:
+            price_match = re.search(r"[\d\s,.]+\s*€", full_text) or re.search(r"€[\d\s,.]+", full_text)
+            if price_match:
+                out["price"] = price_match.group(0).strip()
+        if not out["title"] and (a or full_text):
+            out["title"] = (a.get_text(strip=True) if a else full_text)[:200]
+        _fill_beds_baths_size(soup, out)
         img = soup.find("img", src=True)
         if img and img.get("src"):
             out["image_url"] = img["src"]
-        _fill_beds_baths_size(soup, out)
         return out
 
 

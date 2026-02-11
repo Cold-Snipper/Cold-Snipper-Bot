@@ -623,8 +623,8 @@ public class Main {
                 break;
             case "reset_all_scanned_data":
                 resetAllScannedData();
-                log("Reset all scanned data (leads + FB queue)");
-                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"All scanned data reset (leads and FB queue cleared)\"}");
+                log("Reset all scanned data (leads, FB queue, communications, clients)");
+                sendJson(exchange, 200, "{\"ok\":true,\"message\":\"All scanned data reset (leads, FB queue, communications, clients cleared)\"}");
                 break;
             case "clear_database":
                 clearDatabase();
@@ -1633,9 +1633,15 @@ public class Main {
         NEXT_ID.set(1);
         FB_QUEUE.clear();
         NEXT_FB_ID.set(1);
+        COMMUNICATIONS.clear();
+        NEXT_COMM_ID.set(1);
+        CLIENTS.clear();
+        NEXT_CLIENT_ID.set(1);
         try {
             persistLeads();
             persistFbQueue();
+            persistCommunications();
+            persistClients();
         } catch (IOException e) {
             log("Failed to reset scanned data: " + e.getMessage());
         }

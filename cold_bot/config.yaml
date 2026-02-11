@@ -20,6 +20,7 @@ target_sites_by_country:
     - "https://www.nextimmo.lu/en/"
     - "https://www.bingo.lu/en/"
     - "https://www.propertyweb.lu/en/"
+    - "https://www.wortimmo.lu/fr/"
 
 criteria: "FSBO, owner selling, no agent, home for sale"
 airbnb_criteria: "Tourist demand, attractions, STR-legal, ADR>150, occupancy>50%, unique amenities"
