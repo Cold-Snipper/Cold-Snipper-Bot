@@ -5,6 +5,9 @@ countries:
   - "US"
   # - "UK"  # uncomment and add rightmove URLs below to scrape Rightmove
 
+# atHome.lu: scraper sets language (athome_lang) and navigates Rent/Buy (athome_section) from URL or below
+# athome_lang: en | fr | de  (default from URL /en/, /fr/, /de/)
+# athome_section: rent | buy (default from URL /rent or /buy)
 target_sites_by_country:
   US:
     - "https://example.com/us-listings"
@@ -12,6 +15,7 @@ target_sites_by_country:
   #   - "https://www.rightmove.co.uk/property-for-sale/find.html?locationIdentifier=REGION%5E87490"
   LU:
     - "https://www.athome.lu/en/buy/"
+    - "https://www.athome.lu/en/rent"
     - "https://www.immotop.lu/en/buy/"
     - "https://www.nextimmo.lu/en/"
     - "https://www.bingo.lu/en/"

@@ -1,6 +1,11 @@
 """
 Multi-purpose website scraper module. Base class + site-specific subclasses.
 Dry-run by default (print, no DB). Use --live to write to SQLite.
+
+Research-backed flow (all scrapers): goto (wait until 'load') -> accept_consent ->
+scroll (human-like delays) -> collect. Cookie consent: click Accept-style buttons
+(OneTrust, Cookiebot, GDPR). Avoid networkidle (hangs on SPAs); use element waits.
+Site scrapers can override accept_consent (e.g. AtHome), add set_language/navigate_to_section.
 """
 from __future__ import annotations
 
@@ -20,7 +25,7 @@ try:
 except Exception:
     PlaywrightTimeoutError = Exception
 
-from .browser_automation import close_browser, init_browser, scroll_and_navigate
+from .browser_automation import close_browser, init_browser, scroll_and_navigate, try_accept_consent
 from .llm_integration import extract_contact as llm_extract_contact
 from .llm_integration import _call_json_with_retry
 from .pipeline import validate_url
@@ -111,8 +116,13 @@ class Scraper:
     def goto(self, url: str, timeout_ms: int = 60_000) -> None:
         if not self._page:
             self.init_browser()
-        self._page.goto(url, timeout=timeout_ms, wait_until="domcontentloaded")
-        self._page.wait_for_load_state("domcontentloaded", timeout=timeout_ms)
+        self._page.goto(url, timeout=timeout_ms, wait_until="load")
+        self._page.wait_for_load_state("load", timeout=timeout_ms)
+
+    def accept_consent(self) -> None:
+        """Try to dismiss cookie/consent banner. Override in subclasses for site-specific handling."""
+        if self._page:
+            try_accept_consent(self._page)
 
     def scroll(self, depth: Optional[int] = None) -> None:
         depth = depth or self.scroll_depth
@@ -170,7 +180,7 @@ class Scraper:
         db_path: Optional[str] = None,
         page: Optional[Page] = None,
     ) -> List[Dict[str, Any]]:
-        """Navigate, scroll, collect, extract. If page given, use it and do not close browser."""
+        """Navigate, accept consent, scroll, collect (research: consent then load then element waits)."""
         if not validate_url(url):
             LOG.warning("invalid url skipped: %s", url[:80])
             return []
@@ -180,13 +190,10 @@ class Scraper:
                 self._page = page
             else:
                 self.init_browser()
-            scroll_and_navigate(
-                self._page,
-                url,
-                self.scroll_depth,
-                self.delay_min,
-                self.delay_max,
-            )
+            self.goto(url)
+            self.accept_consent()
+            _random_delay(1, 2)
+            self.scroll()
             _random_delay(self.delay_min, self.delay_max)
             elements = self.collect_listings()
             listings: List[Dict[str, Any]] = []
@@ -306,6 +313,74 @@ class AtHomeScraper(Scraper):
             except Exception:
                 continue
 
+    def set_language(self, lang: str = "en") -> None:
+        """Set site language so we know what we're scraping. Call after accept_consent."""
+        if not self._page:
+            return
+        # If already on correct lang path (e.g. /en/), skip
+        current = self._page.url
+        if f"/{lang}/" in current or current.rstrip("/").endswith(f"/{lang}"):
+            LOG.info("athome: language already %s", lang)
+            return
+        # Try to click language link: English, Français, Deutsch
+        lang_texts = {"en": "English", "fr": "Français", "de": "Deutsch"}
+        text = lang_texts.get(lang.lower(), "English")
+        for sel in [
+            f"a:has-text('{text}')",
+            f"[role='menuitem']:has-text('{text}')",
+            f"button:has-text('{text}')",
+            "a[href*='/en/']",
+        ]:
+            try:
+                loc = self._page.locator(sel).first
+                loc.wait_for(state="visible", timeout=2500)
+                loc.click()
+                _random_delay(1, 2)
+                LOG.info("athome: set language to %s", lang)
+                return
+            except Exception:
+                continue
+        # Fallback: go directly to lang version of current path
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(current)
+            path = parsed.path or "/"
+            if not path.startswith(f"/{lang}/"):
+                new_path = f"/{lang}/" + path.lstrip("/").split("/", 1)[-1] if "/" in path.lstrip("/") else f"/{lang}/"
+                self._page.goto(parsed.scheme + "://" + parsed.netloc + new_path, timeout=15000)
+                _random_delay(1, 2)
+                LOG.info("athome: navigated to %s path", lang)
+        except Exception as e:
+            LOG.warning("athome: set_language failed: %s", e)
+
+    def navigate_to_section(self, section: Optional[str]) -> None:
+        """Navigate to Rent or Buy section via nav/dropdown. section is 'rent' or 'buy'. Call after set_language."""
+        if not self._page or not section:
+            return
+        section = section.lower()
+        current = self._page.url.lower()
+        if f"/{section}" in current or f"?tr={section}" in current:
+            LOG.info("athome: already on %s section", section)
+            return
+        # Click nav link: Rent or Buy (text or href)
+        link_text = "Rent" if section == "rent" else "Buy"
+        for sel in [
+            f"a:has-text('{link_text}')",
+            f"a[href*='/{section}']",
+            f"a[href*='tr={section}']",
+            f"[role='menuitem']:has-text('{link_text}')",
+        ]:
+            try:
+                loc = self._page.locator(sel).first
+                loc.wait_for(state="visible", timeout=3000)
+                loc.click()
+                _random_delay(2, 4)
+                LOG.info("athome: navigated to %s section", section)
+                return
+            except Exception:
+                continue
+        LOG.warning("athome: could not navigate to section %s", section)
+
     def scrape(
         self,
         url: str,
@@ -313,7 +388,7 @@ class AtHomeScraper(Scraper):
         db_path: Optional[str] = None,
         page: Optional[Page] = None,
     ) -> List[Dict[str, Any]]:
-        """Navigate, accept terms, scroll, collect. Override so we can accept consent before scroll."""
+        """Navigate, accept terms, set language, go to rent/buy section, scroll, collect."""
         if not validate_url(url):
             LOG.warning("invalid url skipped: %s", url[:80])
             return []
@@ -325,6 +400,24 @@ class AtHomeScraper(Scraper):
                 self.init_browser()
             self.goto(url)
             self.accept_consent()
+            # Language: from URL (/en/, /fr/, /de/) or config, default en
+            lang = self.config.get("athome_lang") or "en"
+            if "/fr/" in url:
+                lang = "fr"
+            elif "/de/" in url:
+                lang = "de"
+            elif "/en/" in url:
+                lang = "en"
+            self.set_language(lang)
+            # Section: from URL (/rent, /buy) or config, so we're on the right layer
+            section = self.config.get("athome_section")
+            if not section and "/rent" in url.lower():
+                section = "rent"
+            elif not section and "/buy" in url.lower():
+                section = "buy"
+            if not section:
+                section = "buy"
+            self.navigate_to_section(section)
             self.scroll()
             _random_delay(self.delay_min, self.delay_max)
             elements = self.collect_listings()
@@ -622,6 +715,8 @@ class FBMarketplaceScraper(Scraper):
                 for gurl in group_urls:
                     try:
                         self.goto(gurl)
+                        self.accept_consent()
+                        _random_delay(1, 2)
                         _random_delay(self.delay_min, self.delay_max)
                         self.scroll()
                         elements = self.collect_listings()
@@ -641,6 +736,8 @@ class FBMarketplaceScraper(Scraper):
                         LOG.warning("group scrape %s: %s", gurl, e)
             if marketplace_url:
                 self.goto(marketplace_url)
+                self.accept_consent()
+                _random_delay(1, 2)
                 _random_delay(self.delay_min, self.delay_max)
                 self.scroll()
                 elements = self.collect_listings()

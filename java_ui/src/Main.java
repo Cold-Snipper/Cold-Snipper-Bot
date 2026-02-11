@@ -120,6 +120,15 @@ public class Main {
         System.out.println(line);
     }
 
+    /** Use cold_bot venv Python if present (has Playwright); else system python3. */
+    private static String getPythonExecutable() {
+        Path venv = Paths.get("..", "cold_bot", ".venv", "bin", "python3").toAbsolutePath().normalize();
+        if (Files.exists(venv)) return venv.toString();
+        Path winVenv = Paths.get("..", "cold_bot", ".venv", "Scripts", "python.exe").toAbsolutePath().normalize();
+        if (Files.exists(winVenv)) return winVenv.toString();
+        return "python3";
+    }
+
     private static class ApiHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
@@ -771,7 +780,7 @@ public class Main {
         }
         Path leadsPath = dataDir.resolve("leads.csv");
         List<String> command = new ArrayList<>();
-        command.add("python3");
+        command.add(getPythonExecutable());
         command.add(script.toString());
         command.add("--leads-path");
         command.add(leadsPath.toString());
@@ -853,7 +862,7 @@ public class Main {
         }
         Path queuePath = dataDir.resolve("fb_queue.csv");
         List<String> command = new ArrayList<>();
-        command.add("python3");
+        command.add(getPythonExecutable());
         command.add(script.toString());
         command.add("--queue-path");
         command.add(queuePath.toString());
@@ -939,7 +948,7 @@ public class Main {
         }
         Path queuePath = dataDir.resolve("fb_queue.csv");
         List<String> command = new ArrayList<>();
-        command.add("python3");
+        command.add(getPythonExecutable());
         command.add(script.toString());
         command.add("--queue-path");
         command.add(queuePath.toString());
@@ -1006,7 +1015,7 @@ public class Main {
         Path script = Paths.get("..", "cold_bot", "fb_messenger.py").toAbsolutePath().normalize();
         Path queuePath = dataDir.resolve("fb_queue.csv");
         List<String> command = new ArrayList<>();
-        command.add("python3");
+        command.add(getPythonExecutable());
         command.add(script.toString());
         command.add("--queue-path");
         command.add(queuePath.toString());
@@ -1045,7 +1054,7 @@ public class Main {
         Path script = Paths.get("..", "cold_bot", "site_forms.py").toAbsolutePath().normalize();
         Path leadsPath = dataDir.resolve("leads.csv");
         List<String> command = new ArrayList<>();
-        command.add("python3");
+        command.add(getPythonExecutable());
         command.add(script.toString());
         command.add("--leads-path");
         command.add(leadsPath.toString());

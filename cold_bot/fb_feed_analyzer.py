@@ -18,7 +18,7 @@ COLD_BOT_ROOT = Path(__file__).resolve().parent
 if str(COLD_BOT_ROOT) not in sys.path:
     sys.path.insert(0, str(COLD_BOT_ROOT))
 
-from silos.browser_automation import scroll_and_navigate, close_browser
+from silos.browser_automation import scroll_and_navigate, close_browser, _apply_stealth
 from silos.data_scraper import extract_listings
 from utils import random_delay
 
@@ -134,6 +134,7 @@ def main() -> int:
         if args.storage_state and os.path.isfile(args.storage_state):
             opts["storage_state"] = args.storage_state
         context = browser.new_context(**opts)
+        _apply_stealth(context)
         page = context.new_page()
 
         page.set_default_timeout(60_000)
