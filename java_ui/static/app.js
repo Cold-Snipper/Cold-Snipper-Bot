@@ -130,12 +130,9 @@ async function fetchStatus() {
     if (stageLoggingDisplay) stageLoggingDisplay.textContent = (data.logCount ?? 0) > 0 ? "Writing" : "Idle";
     if (stageCrmDisplay) stageCrmDisplay.textContent = (data.clientCount ?? 0) > 0 ? "Populated" : "Empty";
     if (stage2LastScan) stage2LastScan.textContent = data.lastScanAt || "Never";
-    // Real-time: refresh leads/FB when scan is running (every status poll) or when scan just finished
+    // Refresh leads/FB only once when a scan just finished (not on a timer)
     const scanState = (data.scanState || "").toLowerCase();
-    if (scanState === "running") {
-      refreshLeads(lastQuery);
-      refreshFbQueue();
-    } else if (lastScanState === "running" && scanState === "idle") {
+    if (lastScanState === "running" && scanState === "idle") {
       refreshLeads(lastQuery);
       refreshFbQueue();
     }
@@ -1082,7 +1079,7 @@ buildFbSearchUrl();
 fetchStage1Config();
 setInterval(fetchStatus, 1500);
 setInterval(fetchLogs, 1000);
-setInterval(() => refreshLeads(lastQuery), 5000);
+// No timed refresh of leads/FB queue – only when you click Refresh or when a scan finishes
 
 const listingTypeFilterEl = document.getElementById("listing-type-filter");
 const btnApplyListingFilter = document.getElementById("btn-apply-listing-filter");
@@ -1101,6 +1098,4 @@ if (websiteListingTypeEl) {
     refreshLeads(lastQuery);
   });
 }
-setInterval(() => refreshComms(lastCommQuery), 7000);
-setInterval(() => refreshFbQueue(), 6000);
-setInterval(() => refreshClients(lastClientQuery), 8000);
+// No timed refresh – use Refresh button or run a scan to see new data
